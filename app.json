@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "easy-pgt",
-    "slug": "easy-pgt",
+    "slug": "easypgt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.jack.v.curtis.easypgt"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a486d059-e2f4-4770-9900-8a5c66961613"
+      }
+    },
+    "owner": "jack.v.curtis"
   }
 }
