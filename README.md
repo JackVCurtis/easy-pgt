@@ -17,7 +17,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
 
 1) UI Application (Expo + React Native)
 
-    - [ ] Initialize an Expo TypeScript app with a shared design system, linting, and test setup.
+    - [x] Initialize an Expo TypeScript app with a shared design system, linting, and test setup.
 
     - [ ] Build navigation with tabs and stacks for Home, Trust Tree, Handshake, Messages, and Profile flows.
 
