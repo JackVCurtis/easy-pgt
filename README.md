@@ -8,7 +8,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
   - iOS Plugin bridging to libsignal
   - NFC for Merkle Tree exchange
   - Each user generates a public/private key pair and assigns the public key an opaque UUID
-  - Each user maintains a merkle tree of handshakes between users containing both public key and opaque UUID
+  - Each user maintains a merkle tree of handshakes between users containing both public key and opaque UUID, along with a name for each user to use for the other
   - Users sync Merkle Trees via NFC, adding their own handshake to the tree
   - Users can generate signed messages which include their UUID in a header block and signature in a footer block
   - Users can view the position in their own Merkle Tree of any signed message
@@ -19,7 +19,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
 
     - [x] Initialize an Expo TypeScript app with a shared design system, linting, and test setup.
 
-    - [ ] Build navigation with tabs and stacks for Home, Trust Tree, Handshake, Messages, and Profile flows.
+    - [ ] Build navigation with tabs and stacks for Handshake flow, Sign Message flow, and View Message Distance flow
 
     - [ ] Implement reusable UI primitives (buttons, cards, headers, status badges) and consistent dark/light theming.
 
