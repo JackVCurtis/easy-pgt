@@ -1,0 +1,12 @@
+{
+  "name": "easy-pgt",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:JackVCurtis/easy-pgt.git",
+  "author": "Jack Curtis <jack.v.curtis@gmail.com>",
+  "license": "GPL",
+  "private": false,
+  "dependencies": {
+    "expo": "^55.0.6"
+  }
+}
