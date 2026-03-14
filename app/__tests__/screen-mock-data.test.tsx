@@ -1,8 +1,7 @@
 import { render } from '@testing-library/react-native';
 
 import HandshakeScreen from '@/app/(tabs)/handshake';
-import MessageDistanceScreen from '@/app/(tabs)/message-distance';
-import SignMessageScreen from '@/app/(tabs)/sign-message';
+import MessagesScreen from '@/app/(tabs)/messages';
 
 describe('Screen-level mock data views', () => {
   it('shows handshake start state and routes counterparties to a dedicated screen', () => {
@@ -13,23 +12,12 @@ describe('Screen-level mock data views', () => {
     expect(getByText('Open Counterparties')).toBeTruthy();
   });
 
-  it('shows signed message records in the sign-message flow', () => {
-    const { getByText } = render(<SignMessageScreen />);
+  it('shows the combined messages workflow controls and multiline input', () => {
+    const { getByText, getByPlaceholderText } = render(<MessagesScreen />);
 
-    expect(getByText('Signed Messages')).toBeTruthy();
-    expect(getByText('Release update 1.4')).toBeTruthy();
-    expect(getByText('Root hash sync complete')).toBeTruthy();
-  });
-
-  it('shows profile identity details with explicit sharing notice', () => {
-    const { getByText } = render(<MessageDistanceScreen />);
-
-    expect(getByText('Profile Identity')).toBeTruthy();
-    expect(getByText('Display Name')).toBeTruthy();
-    expect(
-      getByText(
-        'Profile identity details are maintained locally and are not shared during handshake unless the counterparty user explicitly opts in.'
-      )
-    ).toBeTruthy();
+    expect(getByText('Messages')).toBeTruthy();
+    expect(getByText('Verify Signature')).toBeTruthy();
+    expect(getByText('Sign + Copy to Clipboard')).toBeTruthy();
+    expect(getByPlaceholderText('Paste or type message content here...')).toBeTruthy();
   });
 });
