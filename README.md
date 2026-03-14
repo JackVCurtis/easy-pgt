@@ -14,7 +14,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
   - Users can view the position in their own Merkle Tree of any signed message
 
 ## Task Breakdown
-
+### Android (Phase I)
 1) UI Application (Expo + React Native)
 
     - [x] Initialize an Expo TypeScript app with a shared design system, linting, and test setup.
@@ -27,7 +27,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
 
     - [ ] Add form validation, loading/error states, and empty states so all core screens are demo-ready.
 
-3) Android Plugin (libsignal bridge)
+2) Android Plugin (libsignal bridge)
 
    - [ ] Create an Android native module that exposes key generation, signing, and verification from libsignal to JavaScript.
 
@@ -37,17 +37,7 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
 
    - [ ] Package and document plugin integration steps for local development and release builds.
 
-5) iOS Plugin (libsignal bridge)
-
-   - [ ] Create an iOS native module that exposes key generation, signing, and verification from libsignal to JavaScript.
-
-   - [ ]  Define matching TypeScript contracts so iOS and Android return consistent payloads.
-
-   - [ ]  Add XCTest coverage for native crypto operations, failures, and bridge serialization.
-
-   - [ ]  Document plugin setup for CocoaPods/Xcode and Expo prebuild workflows.
-
-7) Merkle Tree Creation and Verification
+3) Merkle Tree Creation and Verification
 
    - [ ]  Design canonical handshake leaf encoding including UUID, public key, and metadata needed for ordering.
 
@@ -57,12 +47,22 @@ A mobile app for decentralized sharing of trust relationships via Merkle Tree
 
    - [ ]  Add tests for determinism, tamper detection, duplicate handling, and cross-platform compatibility of hashes.
 
-9) NFC File Exchange
+4) NFC File Exchange
 
    - [ ]  Define a compact exchange format for tree snapshots, proofs, and signature metadata with versioning.
 
    - [ ]  Implement NFC send/receive flows that serialize, validate, and persist exchanged trust data safely.
 
    - [ ]  Add conflict resolution rules for merging imported tree data with local handshakes.
-   
+
+### iOS (Phase II)
+5) iOS Plugin (libsignal bridge)
+
+   - [ ] Create an iOS native module that exposes key generation, signing, and verification from libsignal to JavaScript.
+
+   - [ ]  Define matching TypeScript contracts so iOS and Android return consistent payloads.
+
+   - [ ]  Add XCTest coverage for native crypto operations, failures, and bridge serialization.
+
+   - [ ]  Document plugin setup for CocoaPods/Xcode and Expo prebuild workflows.
    - [ ]  Add end-to-end tests for successful exchange, corrupted payload rejection, and recovery UX.
