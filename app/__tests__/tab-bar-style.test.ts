@@ -1,10 +1,11 @@
 import { getBottomTabBarStyle } from '@/app/navigation/tab-bar-style';
 
 describe('getBottomTabBarStyle', () => {
-  it('adds extra bottom padding and height on Android for three-button navigation spacing', () => {
+  it('adds accessible Android spacing so tabs sit above three-button navigation', () => {
     expect(getBottomTabBarStyle('android')).toEqual({
-      paddingBottom: 12,
-      height: 64,
+      paddingBottom: 20,
+      paddingTop: 8,
+      height: 80,
     });
   });
 

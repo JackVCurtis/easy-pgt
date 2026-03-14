@@ -1,7 +1,11 @@
 export type TrustFlow = {
-  routeName: 'handshake' | 'sign-message' | 'message-distance';
+  routeName: 'handshake' | 'counterparties' | 'sign-message' | 'message-distance';
   title: string;
-  icon: 'person.2.fill' | 'signature' | 'point.topleft.down.curvedto.point.bottomright.up.fill';
+  icon:
+    | 'person.2.fill'
+    | 'person.crop.circle.badge.checkmark'
+    | 'signature'
+    | 'point.topleft.down.curvedto.point.bottomright.up.fill';
   stackScreens: string[];
 };
 
@@ -11,6 +15,12 @@ export const TRUST_FLOWS: TrustFlow[] = [
     title: 'Handshake',
     icon: 'person.2.fill',
     stackScreens: ['index'],
+  },
+  {
+    routeName: 'counterparties',
+    title: 'Counterparties',
+    icon: 'person.crop.circle.badge.checkmark',
+    stackScreens: ['index', '[id]'],
   },
   {
     routeName: 'sign-message',

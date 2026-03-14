@@ -12,7 +12,7 @@ describe('Handshake flow', () => {
     jest.useRealTimers();
   });
 
-  it('guides the user through sharing details, NFC exchange, and adds a trust profile', () => {
+  it('guides the user through sharing details and confirms a generated counterparty name', () => {
     const { getByText, getByPlaceholderText } = render(<HandshakeScreen />);
 
     fireEvent.press(getByText('Start Handshake'));
@@ -31,6 +31,7 @@ describe('Handshake flow', () => {
     }
 
     expect(getByText('Handshake complete')).toBeTruthy();
-    expect(getByText('Taylor Morgan')).toBeTruthy();
+    expect(getByText('Connected with Avery Shaw.')).toBeTruthy();
+    expect(getByText('Name you shared: Taylor Morgan')).toBeTruthy();
   });
 });

@@ -1,16 +1,16 @@
 import { render } from '@testing-library/react-native';
 
 import HandshakeScreen from '@/app/(tabs)/handshake';
-import SignMessageScreen from '@/app/(tabs)/sign-message';
 import MessageDistanceScreen from '@/app/(tabs)/message-distance';
+import SignMessageScreen from '@/app/(tabs)/sign-message';
 
 describe('Screen-level mock data views', () => {
-  it('shows trust relationships in the handshake flow', () => {
+  it('shows handshake start state and routes counterparties to a dedicated screen', () => {
     const { getByText } = render(<HandshakeScreen />);
 
-    expect(getByText('Trust Relationships')).toBeTruthy();
-    expect(getByText('Ari Kim')).toBeTruthy();
-    expect(getByText('Mei Patel')).toBeTruthy();
+    expect(getByText('Handshake')).toBeTruthy();
+    expect(getByText('Start Handshake')).toBeTruthy();
+    expect(getByText('Open Counterparties')).toBeTruthy();
   });
 
   it('shows signed message records in the sign-message flow', () => {
