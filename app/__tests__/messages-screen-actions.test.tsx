@@ -1,11 +1,6 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import * as Clipboard from 'expo-clipboard';
 
 import MessagesScreen from '@/app/(tabs)/messages';
-
-jest.mock('expo-clipboard', () => ({
-  setStringAsync: jest.fn(() => Promise.resolve()),
-}));
 
 describe('Messages screen actions', () => {
   beforeEach(() => {
@@ -19,18 +14,24 @@ describe('Messages screen actions', () => {
     fireEvent.press(getByText('Sign + Copy to Clipboard'));
 
     await waitFor(() => {
-      expect(Clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining('---SIGNATURE---'));
+      expect(getByPlaceholderText('Paste or type message content here...').props.value).toContain(
+        '---SIGNATURE---'
+      );
     });
 
-    expect(getByText('Message signed and copied to clipboard.')).toBeTruthy();
+    expect(getByText('Message signed and copied to clipboard (mock).')).toBeTruthy();
   });
 
   it('reports missing signature when verifying unsigned content', () => {
     const { getByPlaceholderText, getByText } = render(<MessagesScreen />);
 
     fireEvent.changeText(getByPlaceholderText('Paste or type message content here...'), 'unsigned data');
-    fireEvent.press(getByText('Verify Signature'));
+    fireEvent.press(getByText('Verify Message'));
 
     expect(getByText('No signature found.')).toBeTruthy();
+    expect(getByText('Sender distance from local counterparties')).toBeTruthy();
+    expect(getByText('• Northside Organizer: 1 hop(s)')).toBeTruthy();
+    expect(getByText('• Library Contact: 2 hop(s)')).toBeTruthy();
+    expect(getByText('• Mutual Friend: 3 hop(s)')).toBeTruthy();
   });
 });

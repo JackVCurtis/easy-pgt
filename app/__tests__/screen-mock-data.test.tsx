@@ -16,7 +16,7 @@ describe('Screen-level mock data views', () => {
     const { getByText, getByPlaceholderText } = render(<MessagesScreen />);
 
     expect(getByText('Messages')).toBeTruthy();
-    expect(getByText('Verify Signature')).toBeTruthy();
+    expect(getByText('Verify Message')).toBeTruthy();
     expect(getByText('Sign + Copy to Clipboard')).toBeTruthy();
     expect(getByPlaceholderText('Paste or type message content here...')).toBeTruthy();
   });

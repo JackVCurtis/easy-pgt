@@ -1,7 +1,7 @@
-import * as Clipboard from 'expo-clipboard';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { TRUST_RELATIONSHIPS } from '@/app/mock-data';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -27,19 +27,26 @@ function buildSignature(message: string) {
 export default function MessagesScreen() {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
+  const [senderDistances, setSenderDistances] = useState<string[]>([]);
 
   const isSigned = useMemo(() => message.includes(SIGNATURE_MARKER), [message]);
 
   const verifyMessage = () => {
     if (!message.trim()) {
       setStatus('Add a message before verifying.');
+      setSenderDistances([]);
       return;
     }
 
     setStatus(isSigned ? 'Signature detected and verified.' : 'No signature found.');
+    setSenderDistances(
+      TRUST_RELATIONSHIPS.map(
+        (relationship) => `${relationship.counterpartAlias}: ${relationship.trustDepth} hop(s)`
+      )
+    );
   };
 
-  const signAndCopy = async () => {
+  const signAndCopy = () => {
     if (!message.trim()) {
       setStatus('Add a message before signing.');
       return;
@@ -50,8 +57,7 @@ export default function MessagesScreen() {
       : `${message.trimEnd()}\n\n${SIGNATURE_MARKER}\n${buildSignature(message)}`;
 
     setMessage(signedMessage);
-    await Clipboard.setStringAsync(signedMessage);
-    setStatus('Message signed and copied to clipboard.');
+    setStatus('Message signed and copied to clipboard (mock).');
   };
 
   return (
@@ -64,7 +70,7 @@ export default function MessagesScreen() {
           />
 
           <View style={styles.buttonRow}>
-            <AppButton label="Verify Signature" onPress={verifyMessage} style={styles.button} />
+            <AppButton label="Verify Message" onPress={verifyMessage} style={styles.button} />
             <AppButton label="Sign + Copy to Clipboard" onPress={signAndCopy} style={styles.button} />
           </View>
 
@@ -78,6 +84,15 @@ export default function MessagesScreen() {
           />
 
           {status ? <ThemedText>{status}</ThemedText> : null}
+
+          {senderDistances.length > 0 ? (
+            <View style={styles.distanceContainer}>
+              <ThemedText type="defaultSemiBold">Sender distance from local counterparties</ThemedText>
+              {senderDistances.map((distance) => (
+                <ThemedText key={distance}>• {distance}</ThemedText>
+              ))}
+            </View>
+          ) : null}
         </AppCard>
       </ScrollView>
     </ThemedView>
@@ -108,5 +123,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     lineHeight: 22,
+  },
+  distanceContainer: {
+    marginTop: 8,
+    gap: 4,
   },
 });
