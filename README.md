@@ -185,7 +185,7 @@ iOS support is planned with a more limited NFC role.
 - [x] Add schema/version migration strategy to reject unknown or malformed record versions safely. See `docs/schema-versioning.md`.
 
 #### 2) Validation engine
-- [ ] Implement structural validation per record type (required fields, format constraints, size limits).
+- [x] Implement structural validation per record type (required fields, format constraints, size limits).
 - [ ] Implement cryptographic validation (self-signatures, participant signatures, endorsement signatures, rotation/revocation signer checks).
 - [ ] Implement semantic validation rules:
   - duplicate record detection
