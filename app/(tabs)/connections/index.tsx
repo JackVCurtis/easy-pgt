@@ -2,7 +2,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { getDirectCounterparties, type Counterparty } from '@/app/handshake/counterparty-store';
+import { getDirectCounterparties, type Counterparty } from '@/app/handshake/connection-store';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -10,7 +10,7 @@ import { AppCard } from '@/components/ui/app-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 
-export default function CounterpartiesScreen() {
+export default function ConnectionsScreen() {
   const [counterparties, setCounterparties] = useState<Counterparty[]>(getDirectCounterparties());
 
   useFocusEffect(
@@ -24,8 +24,8 @@ export default function CounterpartiesScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>
           <SectionHeader
-            title="Counterparties"
-            subtitle="Only direct, named counterparties are shown here."
+            title="Connections"
+            subtitle="Only direct, named connections are shown here."
           />
           {counterparties.map((counterparty) => (
             <View key={counterparty.id} style={styles.item}>
@@ -38,7 +38,7 @@ export default function CounterpartiesScreen() {
                 label="Edit Details"
                 onPress={() =>
                   router.push({
-                    pathname: '/counterparties/[id]',
+                    pathname: '/connections/[id]',
                     params: { id: counterparty.id },
                   })
                 }

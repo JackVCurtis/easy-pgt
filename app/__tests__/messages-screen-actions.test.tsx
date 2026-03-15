@@ -71,7 +71,7 @@ describe('Messages screen actions', () => {
     fireEvent.press(getByText('Verify Message'));
 
     expect(getByText('No signature found.')).toBeTruthy();
-    expect(getByText('Sender distance from local counterparties')).toBeTruthy();
+    expect(getByText('Sender distance from local connections')).toBeTruthy();
     expect(getByText('• Northside Organizer: 1 hop(s)')).toBeTruthy();
     expect(getByText('• Library Contact: 2 hop(s)')).toBeTruthy();
     expect(getByText('• Mutual Friend: 3 hop(s)')).toBeTruthy();

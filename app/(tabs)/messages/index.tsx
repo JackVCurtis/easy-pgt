@@ -101,7 +101,7 @@ export default function MessagesScreen() {
 
           {senderDistances.length > 0 ? (
             <View style={styles.distanceContainer}>
-              <ThemedText type="defaultSemiBold">Sender distance from local counterparties</ThemedText>
+              <ThemedText type="defaultSemiBold">Sender distance from local connections</ThemedText>
               {senderDistances.map((distance) => (
                 <ThemedText key={distance}>• {distance}</ThemedText>
               ))}

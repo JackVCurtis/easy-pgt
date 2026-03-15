@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { addHandshakeCounterparty } from '@/app/handshake/counterparty-store';
+import { addHandshakeCounterparty } from '@/app/handshake/connection-store';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -132,7 +132,7 @@ export default function HandshakeScreen() {
         <AppCard>
           <SectionHeader
             title="Handshake"
-            subtitle="Share your name, exchange trust payloads, and then review counterparties on their own screen."
+            subtitle="Share your name, exchange trust payloads, and then review connections on their own screen."
           />
 
           {stage === 'collecting' ? (
@@ -209,7 +209,7 @@ export default function HandshakeScreen() {
                   <ThemedText>Name you shared: {handshakedProfileSummary.nameShared}</ThemedText>
                 </>
               ) : null}
-              <AppButton label="View Counterparties" onPress={() => router.push('/counterparties')} />
+              <AppButton label="View Connections" onPress={() => router.push('/connections')} />
               <AppButton label="Start Another Handshake" onPress={startHandshake} />
             </View>
           ) : null}
@@ -217,7 +217,7 @@ export default function HandshakeScreen() {
           {stage === 'idle' ? <AppButton label="Start Handshake" onPress={startHandshake} /> : null}
 
           <View style={styles.previewSection}>
-            <AppButton label="Open Counterparties" onPress={() => router.push('/counterparties')} />
+            <AppButton label="Open Connections" onPress={() => router.push('/connections')} />
           </View>
         </AppCard>
       </ScrollView>

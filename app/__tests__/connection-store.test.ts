@@ -3,7 +3,7 @@ import {
   getDirectCounterparties,
   resetCounterpartyStore,
   updateCounterparty,
-} from '@/app/handshake/counterparty-store';
+} from '@/app/handshake/connection-store';
 
 describe('counterparty store', () => {
   beforeEach(() => {

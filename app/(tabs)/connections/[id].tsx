@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { getCounterpartyById, updateCounterparty } from '@/app/handshake/counterparty-store';
+import { getCounterpartyById, updateCounterparty } from '@/app/handshake/connection-store';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -10,7 +10,7 @@ import { AppCard } from '@/components/ui/app-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-export default function CounterpartyDetailsScreen() {
+export default function ConnectionDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const counterparty = useMemo(() => (id ? getCounterpartyById(id) : undefined), [id]);
 
@@ -26,8 +26,8 @@ export default function CounterpartyDetailsScreen() {
       <ThemedView style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
           <AppCard>
-            <SectionHeader title="Counterparty Details" subtitle="This counterparty was not found." />
-            <AppButton label="Back to Counterparties" onPress={() => router.back()} />
+            <SectionHeader title="Connection Details" subtitle="This connection was not found." />
+            <AppButton label="Back to Connections" onPress={() => router.back()} />
           </AppCard>
         </ScrollView>
       </ThemedView>
@@ -47,11 +47,11 @@ export default function CounterpartyDetailsScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>
-          <SectionHeader title="Counterparty Details" subtitle="Edit the saved name and optional contact info." />
+          <SectionHeader title="Connection Details" subtitle="Edit the saved name and optional contact info." />
           <View style={styles.formField}>
             <ThemedText type="defaultSemiBold">Name</ThemedText>
             <TextInput
-              placeholder="Counterparty name"
+              placeholder="Connection name"
               placeholderTextColor="#8A8A8A"
               value={providedName}
               onChangeText={setProvidedName}

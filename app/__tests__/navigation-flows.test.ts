@@ -1,10 +1,10 @@
 import { TRUST_FLOWS } from '@/app/navigation/flows';
 
 describe('TRUST_FLOWS', () => {
-  it('defines the three trust flows as tab entries including counterparties and messages', () => {
+  it('defines the three trust flows as tab entries including connections and messages', () => {
     expect(TRUST_FLOWS.map((flow) => flow.routeName)).toEqual([
       'handshake',
-      'counterparties',
+      'connections',
       'messages',
     ]);
   });
@@ -15,7 +15,7 @@ describe('TRUST_FLOWS', () => {
     );
 
     expect(flowToScreens.handshake).toEqual(['index']);
-    expect(flowToScreens.counterparties).toEqual(['index', '[id]']);
+    expect(flowToScreens.connections).toEqual(['index', '[id]']);
     expect(flowToScreens.messages).toEqual(['index']);
   });
 });

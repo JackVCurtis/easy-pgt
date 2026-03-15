@@ -4,12 +4,12 @@ import HandshakeScreen from '@/app/(tabs)/handshake';
 import MessagesScreen from '@/app/(tabs)/messages';
 
 describe('Screen-level mock data views', () => {
-  it('shows handshake start state and routes counterparties to a dedicated screen', () => {
+  it('shows handshake start state and routes connections to a dedicated screen', () => {
     const { getByText } = render(<HandshakeScreen />);
 
     expect(getByText('Handshake')).toBeTruthy();
     expect(getByText('Start Handshake')).toBeTruthy();
-    expect(getByText('Open Counterparties')).toBeTruthy();
+    expect(getByText('Open Connections')).toBeTruthy();
   });
 
   it('shows the combined messages workflow controls and multiline input', () => {
