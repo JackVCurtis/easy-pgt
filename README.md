@@ -125,6 +125,8 @@ README.md
 docs/
   protocol_records.md
   canonical-serialization.md
+  hash-domains.md
+  schema-versioning.md
 ```
 
 Recommended reading order:
@@ -180,7 +182,7 @@ iOS support is planned with a more limited NFC role.
 - [x] Add domain-separated hashing helpers:
   - `record_hash = SHA256("record_hash_v1" || canonical_record_bytes)`
   - `leaf_hash = SHA256("merkle_leaf_v1" || record_hash)`
-- [ ] Add schema/version migration strategy to reject unknown or malformed record versions safely.
+- [x] Add schema/version migration strategy to reject unknown or malformed record versions safely. See `docs/schema-versioning.md`.
 
 #### 2) Validation engine
 - [ ] Implement structural validation per record type (required fields, format constraints, size limits).
