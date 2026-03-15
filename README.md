@@ -171,7 +171,7 @@ iOS support is planned with a more limited NFC role.
 ### Remaining Engineering Checklist (architecture-aligned)
 
 #### 1) Canonical record formats (highest priority)
-- [ ] Define versioned canonical schemas for all durable record types:
+- [x] Define versioned canonical schemas for all durable record types:
   - `identity_binding`
   - `endorsement`
   - `handshake`
