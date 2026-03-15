@@ -171,7 +171,7 @@ iOS support is planned with a more limited NFC role.
 
     - [x] Implement reusable UI primitives (buttons, cards, headers, status badges) and consistent dark/light theming.
 
-    - [ ] Create screen-level views backed by mock data for trust relationships, signed messages, and profile identity details.
+    - [x] Create screen-level views backed by mock data for trust relationships, signed messages, and profile identity details.
 
     - [ ] Add form validation, loading/error states, and empty states so all core screens are demo-ready.
 
