@@ -33,5 +33,7 @@ describe('Handshake flow', () => {
     expect(getByText('Handshake complete')).toBeTruthy();
     expect(getByText('Connected with Avery Shaw.')).toBeTruthy();
     expect(getByText('Name you shared: Taylor Morgan')).toBeTruthy();
+    expect(getByText('Mutual connections (1 step)')).toBeTruthy();
+    expect(getByText('You → Jordan Miles → Avery Shaw')).toBeTruthy();
   });
 });

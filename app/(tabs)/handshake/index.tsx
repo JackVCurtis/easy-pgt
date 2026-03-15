@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { addHandshakeCounterparty } from '@/app/handshake/connection-store';
 import { ThemedText } from '@/components/themed-text';
@@ -8,10 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { SectionHeader } from '@/components/ui/section-header';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-type HandshakeStepStatus = 'pending' | 'active' | 'complete';
 type HandshakeStage = 'idle' | 'collecting' | 'exchanging' | 'complete';
 
 type ExchangeStep = {
@@ -28,46 +27,28 @@ const EXCHANGE_STEPS: ExchangeStep[] = [
 
 const EXCHANGE_STEP_DURATION_MS = 800;
 
-function getStepStatus(stepIndex: number, currentStep: number): HandshakeStepStatus {
-  if (stepIndex < currentStep) {
-    return 'complete';
+type ExchangeStatusTone = 'neutral' | 'warning' | 'success';
+
+function getExchangeStatus(stepIndex: number): { label: string; tone: ExchangeStatusTone } {
+  if (stepIndex <= 0) {
+    return { label: 'Starting handshake', tone: 'neutral' };
   }
 
-  if (stepIndex === currentStep) {
-    return 'active';
+  if (stepIndex >= EXCHANGE_STEPS.length) {
+    return { label: 'Handshake verified', tone: 'success' };
   }
 
-  return 'pending';
-}
-
-function getBadgeTone(status: HandshakeStepStatus): 'neutral' | 'warning' | 'success' {
-  if (status === 'complete') {
-    return 'success';
-  }
-
-  if (status === 'active') {
-    return 'warning';
-  }
-
-  return 'neutral';
-}
-
-function getBadgeLabel(status: HandshakeStepStatus): string {
-  if (status === 'complete') {
-    return 'Complete';
-  }
-
-  if (status === 'active') {
-    return 'In Progress';
-  }
-
-  return 'Waiting';
+  return { label: EXCHANGE_STEPS[stepIndex].label, tone: 'warning' };
 }
 
 export default function HandshakeScreen() {
   const inputBackgroundColor = useThemeColor({}, 'backgroundSecondary');
   const inputBorderColor = useThemeColor({}, 'borderSubtle');
   const inputTextColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'textMuted');
+  const statusNeutralColor = useThemeColor({}, 'neutral');
+  const statusWarningColor = useThemeColor({}, 'warning');
+  const statusSuccessColor = useThemeColor({}, 'success');
 
   const [stage, setStage] = useState<HandshakeStage>('idle');
   const [nameToShare, setNameToShare] = useState('');
@@ -113,6 +94,15 @@ export default function HandshakeScreen() {
     };
   }, [nameToShare, newCounterpartyName, stage]);
 
+  const exchangeStatus = useMemo(() => getExchangeStatus(exchangeStepIndex), [exchangeStepIndex]);
+
+  const statusColor =
+    exchangeStatus.tone === 'success'
+      ? statusSuccessColor
+      : exchangeStatus.tone === 'warning'
+        ? statusWarningColor
+        : statusNeutralColor;
+
   const startHandshake = () => {
     setStage('collecting');
     setNameToShare('');
@@ -128,13 +118,14 @@ export default function HandshakeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <AppCard>
+      <AppCard style={styles.card}>
+        <View style={styles.mainContent}>
           <SectionHeader
             title="Handshake"
             subtitle="Share your name, exchange trust payloads, and then review connections on their own screen."
           />
 
+          <View style={styles.flowContent}>
           {stage === 'collecting' ? (
             <View style={styles.flowSection}>
               <ThemedText type="subtitle">Share details for this handshake</ThemedText>
@@ -187,16 +178,19 @@ export default function HandshakeScreen() {
                 Keep both devices close while we simulate NFC payload exchange and trust tree verification.
               </ThemedText>
 
-              {EXCHANGE_STEPS.map((step, index) => {
-                const status = getStepStatus(index, exchangeStepIndex);
-
-                return (
-                  <View key={step.id} style={styles.item}>
-                    <ThemedText type="defaultSemiBold">{step.label}</ThemedText>
-                    <StatusBadge label={getBadgeLabel(status)} tone={getBadgeTone(status)} />
-                  </View>
-                );
-              })}
+              <View style={styles.statusRow}>
+                <MaterialIcons
+                  name={exchangeStatus.tone === 'success' ? 'check-circle' : 'autorenew'}
+                  size={24}
+                  color={statusColor}
+                />
+                <View style={styles.statusTextGroup}>
+                  <ThemedText type="defaultSemiBold">{exchangeStatus.label}</ThemedText>
+                  <ThemedText style={{ color: mutedTextColor }}>
+                    {exchangeStatus.tone === 'warning' ? 'In progress' : 'Waiting'}
+                  </ThemedText>
+                </View>
+              </View>
             </View>
           ) : null}
 
@@ -207,20 +201,30 @@ export default function HandshakeScreen() {
                 <>
                   <ThemedText>Connected with {handshakedProfileSummary.counterpartyName}.</ThemedText>
                   <ThemedText>Name you shared: {handshakedProfileSummary.nameShared}</ThemedText>
+
+                  <View style={styles.mutualConnectionsSection}>
+                    <ThemedText type="defaultSemiBold">Mutual connections (1 step)</ThemedText>
+                    <ThemedText>
+                      You → Jordan Miles → {handshakedProfileSummary.counterpartyName}
+                    </ThemedText>
+                    <ThemedText>
+                      You → Riley Chen → {handshakedProfileSummary.counterpartyName}
+                    </ThemedText>
+                  </View>
                 </>
               ) : null}
-              <AppButton label="View Connections" onPress={() => router.push('/connections')} />
               <AppButton label="Start Another Handshake" onPress={startHandshake} />
             </View>
           ) : null}
 
           {stage === 'idle' ? <AppButton label="Start Handshake" onPress={startHandshake} /> : null}
+          </View>
 
           <View style={styles.previewSection}>
             <AppButton label="Open Connections" onPress={() => router.push('/connections')} />
           </View>
-        </AppCard>
-      </ScrollView>
+        </View>
+      </AppCard>
     </ThemedView>
   );
 }
@@ -228,16 +232,37 @@ export default function HandshakeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
     padding: 24,
+  },
+  card: {
+    flex: 1,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  flowContent: {
+    flex: 1,
+    justifyContent: 'center',
   },
   flowSection: {
     gap: 12,
-    marginBottom: 16,
   },
   previewSection: {
-    marginTop: 8,
+    marginTop: 'auto',
+    paddingTop: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  statusTextGroup: {
+    gap: 2,
+  },
+  mutualConnectionsSection: {
+    gap: 4,
+    marginTop: 4,
   },
   input: {
     borderRadius: 10,
@@ -245,9 +270,5 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     fontSize: 16,
-  },
-  item: {
-    gap: 4,
-    marginBottom: 4,
   },
 });
