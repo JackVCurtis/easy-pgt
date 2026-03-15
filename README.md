@@ -123,9 +123,8 @@ During a BLE session, peers:
 README.md
 
 docs/
-  architecture.md
-  protocol_spec.md
-  sync_state_machine.md
+  protocol_records.md
+  canonical-serialization.md
 ```
 
 Recommended reading order:
@@ -177,7 +176,7 @@ iOS support is planned with a more limited NFC role.
   - `handshake`
   - `key_rotation`
   - `revocation`
-- [ ] Specify deterministic serialization rules for `canonical_bytes` (field order, encoding, optional fields, timestamp/nonce formats).
+- [x] Specify deterministic serialization rules for `canonical_bytes` (field order, encoding, optional fields, timestamp/nonce formats). See `docs/canonical-serialization.md`.
 - [ ] Add domain-separated hashing helpers:
   - `record_hash = SHA256("record_hash_v1" || canonical_record_bytes)`
   - `leaf_hash = SHA256("merkle_leaf_v1" || record_hash)`
