@@ -1,5 +1,3 @@
-# Easy PGT (Pretty Good Trust)
-
 # Pretty Good Trust (PGT)
 
 Pretty Good Trust (PGT) is a mobile system for exchanging and verifying identity claims using a **proximity-bootstrapped, Merkle-synchronized trust log**.
@@ -21,11 +19,31 @@ PGT should be thought of as:
 
 ---
 
+# Cryptographic Model
+
+PGT uses **modern, deterministic cryptographic primitives implemented in JavaScript** using **TweetNaCl**.
+
+Cryptographic operations rely on:
+
+| Primitive                | Algorithm   | Library          |
+| ------------------------ | ----------- | ---------------- |
+| Identity signatures      | Ed25519     | TweetNaCl        |
+| Ephemeral key exchange   | X25519      | TweetNaCl        |
+| Hashing                  | SHA-256     | Expo Crypto      |
+| Merkle tree hashing      | SHA-256     | Expo Crypto      |
+| Secure local key storage | OS keystore | Expo SecureStore |
+
+This design keeps the cryptographic layer **portable and deterministic across platforms**, allowing the core protocol logic to run entirely in TypeScript.
+
+No native crypto bridge is required.
+
+---
+
 # Core Concepts
 
 ## Identity bindings
 
-Each installation generates a long-term cryptographic identity key.
+Each installation generates a **long-term Ed25519 identity keypair**.
 
 A **self-signed identity binding** associates:
 
@@ -34,6 +52,13 @@ UUID → public identity key
 ```
 
 UUIDs are opaque identifiers. They are not trusted by themselves and must always be interpreted through signed bindings.
+
+The binding record includes:
+
+* UUID
+* public key
+* timestamp
+* signature by the identity key
 
 ---
 
@@ -44,7 +69,7 @@ A **handshake** is a mutually signed record proving that two identities complete
 Handshakes record:
 
 * the identity bindings of both participants
-* ephemeral session keys
+* ephemeral session public keys
 * each participant’s Merkle log state
 
 Handshakes do not prove real-world identity truth. They only prove that two identities interacted.
@@ -91,20 +116,22 @@ The Merkle structure provides:
 
 PGT uses two local communication technologies.
 
-### NFC
+---
+
+## NFC
 
 NFC is used only to bootstrap a session and prove physical proximity.
 
 The bootstrap exchanges:
 
 * identity binding hashes
-* ephemeral session keys
+* ephemeral session public keys
 * a session identifier
 * BLE connection hints
 
 ---
 
-### Bluetooth Low Energy (BLE)
+## Bluetooth Low Energy (BLE)
 
 BLE carries the actual synchronization traffic.
 
@@ -162,86 +189,204 @@ Android is the initial target platform.
 iOS support is planned with a more limited NFC role.
 
 ---
-## Task Breakdown
-### Current UI Status (already completed)
-- [x] Initialize Expo TypeScript app with shared design system, linting, and test setup.
-- [x] Build tab/stack navigation for Handshake, Sign Message, and View Message Distance.
-- [x] Implement reusable UI primitives and dark/light theming.
-- [x] Build screen-level mock-data views for trust relationships, signed messages, and profile identity.
 
-### Remaining Engineering Checklist (architecture-aligned)
+# Cryptographic Implementation
 
-#### 1) Canonical record formats (highest priority)
-- [x] Define versioned canonical schemas for all durable record types:
-  - `identity_binding`
-  - `endorsement`
-  - `handshake`
-  - `key_rotation`
-  - `revocation`
-- [x] Specify deterministic serialization rules for `canonical_bytes` (field order, encoding, optional fields, timestamp/nonce formats). See `docs/canonical-serialization.md`.
-- [x] Add domain-separated hashing helpers:
-  - `record_hash = SHA256("record_hash_v1" || canonical_record_bytes)`
-  - `leaf_hash = SHA256("merkle_leaf_v1" || record_hash)`
-- [x] Add schema/version migration strategy to reject unknown or malformed record versions safely. See `docs/schema-versioning.md`.
+PGT uses a **pure JavaScript crypto stack** compatible with Expo.
 
-#### 2) Validation engine
-- [x] Implement structural validation per record type (required fields, format constraints, size limits).
-- [ ] Implement cryptographic validation (self-signatures, participant signatures, endorsement signatures, rotation/revocation signer checks).
-- [ ] Implement semantic validation rules:
-  - duplicate record detection
-  - conflicting payload detection for same logical ID
-  - key-epoch/rotation-counter monotonicity checks
-- [ ] Add an auditable validation result model (`accepted`, `rejected`, `conflicted`, reason codes).
+| Component                   | Library          |
+| --------------------------- | ---------------- |
+| Key generation              | TweetNaCl        |
+| Signing / verification      | TweetNaCl        |
+| Diffie-Hellman session keys | TweetNaCl        |
+| Hashing                     | Expo Crypto      |
+| Secure key storage          | Expo SecureStore |
 
-#### 3) Trust resolution engine
-- [ ] Implement local trust state derivation (`CLAIMED`, `TENTATIVE`, `VERIFIED`, `CONFLICTED`, `REVOKED`).
-- [ ] Implement endorsement weighting and threshold policy configuration.
-- [ ] Apply key rotation and revocation effects without deleting prior history.
-- [ ] Surface conflict sets explicitly (same UUID → different key, same logical record ID → different payload).
-- [ ] Expose deterministic, explainable trust decisions for UI/debug tooling.
+### Identity key generation
 
-#### 4) Deterministic Merkle log
-- [ ] Implement append-only record storage and immutable history model.
-- [ ] Build deterministic leaf ordering (`sort by leaf_hash`) and reproducible Merkle root generation.
-- [ ] Implement Merkle proof generation and verification APIs.
-- [ ] Implement reconciliation helpers for subtree diffing and missing-leaf discovery.
-- [ ] Add conformance tests for determinism, tamper detection, replay handling, and cross-device hash parity.
+```
+const keypair = nacl.sign.keyPair()
+```
 
-#### 5) BLE synchronization protocol
-- [ ] Implement session negotiation with authenticated encryption using NFC-bootstrapped ephemeral material.
-- [ ] Implement sync phases:
-  1. root comparison
-  2. subtree reconciliation
-  3. record transfer
-  4. validation
-  5. commit
-- [ ] Ensure invalid records never commit and always produce structured rejection events.
-- [ ] Implement resumable sync checkpoints for interrupted sessions.
-- [ ] Add protocol tests for divergence recovery, partial transfer resume, and replay resilience.
+### Signing
 
-#### 6) NFC bootstrap
-- [ ] Define and version `NfcBootstrap` payload (`session_uuid`, `identity_binding_hash`, `ephemeral_public_key`, `bluetooth_service_uuid`, `nonce`, `signature`).
-- [ ] Enforce strict payload size limits and parser hardening for malformed/tampered input.
-- [ ] Bind bootstrap data to subsequent BLE session negotiation.
-- [ ] Add UX/state handling for tap success, timeout, mismatch, and retry/recovery.
+```
+signature = nacl.sign.detached(message, secretKey)
+```
 
-#### 7) Mobile platform bridge work
+### Verification
 
-##### Android (Phase I)
-- [ ] Ship Android native crypto bridge that wraps **libsignal** cryptographic primitives for key generation, signing, and verification.
-- [ ] Define exactly which libsignal APIs are used and enforce secure defaults (algorithm selection, key sizes, nonce randomness, and signature encoding).
-- [ ] Finalize stable TypeScript contract and strict JNI/bridge input-output validation.
-- [ ] Add unit/instrumentation tests for success/failure paths, serialization edge cases, and parity with expected libsignal behavior.
-- [ ] Document build, local dev, CI, and release integration steps, including libsignal dependency/version pinning.
+```
+nacl.sign.detached.verify(message, signature, publicKey)
+```
 
-##### iOS (Phase II)
-- [ ] Ship iOS native crypto bridge with parity to Android API and payload shapes.
-- [ ] Add XCTest coverage for crypto behavior, bridging failures, and serialization fidelity.
-- [ ] Document CocoaPods/Xcode + Expo prebuild setup.
-- [ ] Add E2E tests for valid exchange, corrupted payload rejection, and user recovery flow.
+Private keys are stored locally using **SecureStore**, backed by the platform keystore where available.
 
-#### 8) UI completion for realistic demos
-- [ ] Add validation, loading, empty, and error states across all core screens.
-- [ ] Add conflict visualization for disputed bindings/records.
-- [ ] Add trust-state explainability views (why an identity is VERIFIED/CONFLICTED/etc.).
-- [ ] Add sync session progress and failure diagnostics in-app.
+---
+
+# Task Breakdown
+
+## Current UI Status (already completed)
+
+* [x] Initialize Expo TypeScript app with shared design system, linting, and test setup.
+* [x] Build tab/stack navigation for Handshake, Sign Message, and View Message Distance.
+* [x] Implement reusable UI primitives and dark/light theming.
+* [x] Build screen-level mock-data views for trust relationships, signed messages, and profile identity.
+
+---
+
+# Remaining Engineering Checklist (architecture-aligned)
+
+## 1) Canonical record formats (highest priority)
+
+* [x] Define versioned canonical schemas for all durable record types:
+
+  * `identity_binding`
+  * `endorsement`
+  * `handshake`
+  * `key_rotation`
+  * `revocation`
+
+* [x] Specify deterministic serialization rules for `canonical_bytes`
+  (field order, encoding, optional fields, timestamp/nonce formats).
+
+* [x] Add domain-separated hashing helpers:
+
+```
+record_hash = SHA256("record_hash_v1" || canonical_record_bytes)
+
+leaf_hash = SHA256("merkle_leaf_v1" || record_hash)
+```
+
+* [x] Add schema/version migration strategy to reject unknown or malformed record versions safely.
+
+---
+
+## 2) Validation engine
+
+* [x] Implement structural validation per record type
+* [ ] Implement cryptographic validation
+
+Required checks:
+
+* identity self-signatures
+* handshake participant signatures
+* endorsement signatures
+* rotation/revocation signer checks
+
+- [ ] Implement semantic validation rules
+
+* duplicate record detection
+* conflicting payload detection
+* key rotation monotonicity checks
+
+- [ ] Add auditable validation results:
+
+```
+accepted
+rejected
+conflicted
+```
+
+---
+
+## 3) Trust resolution engine
+
+* [ ] Implement local trust state derivation
+
+```
+CLAIMED
+TENTATIVE
+VERIFIED
+CONFLICTED
+REVOKED
+```
+
+* [ ] Implement endorsement weighting
+* [ ] Apply rotation/revocation effects without deleting history
+* [ ] Surface conflict sets explicitly
+* [ ] Provide deterministic explainable trust decisions
+
+---
+
+## 4) Deterministic Merkle log
+
+* [ ] Implement append-only record storage
+* [ ] Deterministic leaf ordering (`sort by leaf_hash`)
+* [ ] Reproducible Merkle root generation
+* [ ] Merkle proof generation and verification APIs
+* [ ] Subtree diff and missing-leaf discovery
+
+Add conformance tests for:
+
+* determinism
+* tamper detection
+* replay handling
+* cross-device hash parity
+
+---
+
+## 5) BLE synchronization protocol
+
+* [ ] Implement authenticated encrypted channel using NFC-bootstrapped ephemeral keys
+* [ ] Implement synchronization phases
+
+1. root comparison
+2. subtree reconciliation
+3. record transfer
+4. validation
+5. commit
+
+* [ ] Ensure invalid records never commit
+* [ ] Implement resumable sync checkpoints
+
+---
+
+## 6) NFC bootstrap
+
+Define and version:
+
+```
+NfcBootstrap {
+  session_uuid
+  identity_binding_hash
+  ephemeral_public_key
+  bluetooth_service_uuid
+  nonce
+  signature
+}
+```
+
+Add strict payload validation and parser hardening.
+
+---
+
+## 7) Cryptographic layer
+
+* [ ] Implement `crypto.ts` wrapper around TweetNaCl primitives
+* [ ] Define stable API:
+
+```
+generateIdentityKeypair()
+signRecord()
+verifySignature()
+generateEphemeralKeypair()
+deriveSharedSecret()
+```
+
+* [ ] Implement secure key storage abstraction
+* [ ] Ensure deterministic signature encoding
+* [ ] Add cross-device deterministic crypto tests
+
+---
+
+## 8) UI completion for realistic demos
+
+* [ ] Add validation/loading/error states
+* [ ] Add conflict visualization
+* [ ] Add trust explainability views
+* [ ] Add sync session diagnostics
+
+---
+
+—which will make the repository much easier for Codex or contributors to implement correctly.
