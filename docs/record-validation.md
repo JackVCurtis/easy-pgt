@@ -11,10 +11,12 @@ Validation is intentionally staged to keep behavior deterministic:
    - validates field format constraints
    - validates schema version support
    - validates size limits
-2. **Cryptographic validation** (future)
+2. **Cryptographic validation** (implemented)
 3. **Semantic validation** (future)
 
 Structural validation runs first and short-circuits before cryptographic or semantic checks.
+
+Cryptographic validation is exposed via `validateRecord(record, context)` and `validateRecordCryptography(record, context)`.
 
 ## Structural validation entrypoint
 
