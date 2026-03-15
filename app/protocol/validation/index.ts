@@ -1,5 +1,7 @@
 export * from './formatValidators';
 export * from './validateRecordStructure';
+export * from './validateRecord';
+export * from './validateRecordCryptography';
 export * from './validationLimits';
 export * from './validationTypes';
 export * from './validators/endorsementValidator';

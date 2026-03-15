@@ -265,7 +265,7 @@ leaf_hash = SHA256("merkle_leaf_v1" || record_hash)
 ## 2) Validation engine
 
 * [x] Implement structural validation per record type
-* [ ] Implement cryptographic validation
+* [x] Implement cryptographic validation
 
 Required checks:
 
