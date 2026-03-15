@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { SectionHeader } from '@/components/ui/section-header';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 const SIGNATURE_MARKER = '---SIGNATURE---';
 
@@ -28,6 +29,11 @@ export default function MessagesScreen() {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [senderDistances, setSenderDistances] = useState<string[]>([]);
+
+  const inputTextColor = useThemeColor({}, 'text');
+  const inputBackgroundColor = useThemeColor({}, 'surface');
+  const inputBorderColor = useThemeColor({}, 'border');
+  const inputPlaceholderColor = useThemeColor({}, 'textMuted');
 
   const isSigned = useMemo(() => message.includes(SIGNATURE_MARKER), [message]);
 
@@ -77,9 +83,17 @@ export default function MessagesScreen() {
           <TextInput
             multiline
             placeholder="Paste or type message content here..."
+            placeholderTextColor={inputPlaceholderColor}
             value={message}
             onChangeText={setMessage}
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                color: inputTextColor,
+                backgroundColor: inputBackgroundColor,
+                borderColor: inputBorderColor,
+              },
+            ]}
             textAlignVertical="top"
           />
 
