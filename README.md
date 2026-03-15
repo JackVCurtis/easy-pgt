@@ -388,5 +388,3 @@ deriveSharedSecret()
 * [ ] Add sync session diagnostics
 
 ---
-
-—which will make the repch ea
