@@ -73,6 +73,24 @@ A binding is marked conflicted when any of the following are present:
 
 Conflicts are returned in `evidence.conflicts` for explainability.
 
+## Conflict Set Exposure
+
+When a binding resolves to `CONFLICTED`, `evidence.conflicts` contains the explicit canonical record hashes that caused the conflict.
+
+Conflict sets are generated from validated records only and include:
+
+1. **UUID binding conflicts**: if multiple `identity_binding` records exist for a `subject_uuid` and no single active binding can be deterministically selected, each conflicted binding reports the full sorted set of conflicting identity-binding hashes.
+2. **Contradictory endorsements**: if the same `endorser_binding_hash` emits both `binding_valid` and `binding_invalid` for the same `subject_binding_hash`, the conflicted binding reports the hashes of those contradictory endorsement records.
+3. **Rotation chain ambiguity**: branching or otherwise non-linear key-rotation evidence that prevents selecting a single active binding is surfaced as a UUID conflict set containing all relevant binding hashes.
+
+Determinism guarantees:
+
+- Conflict hashes are canonical record hashes (`hash_<sha256(canonical_record_bytes)>`).
+- Conflict sets are deduplicated and lexicographically sorted before output.
+- Conflict output is independent of input insertion order and runtime map iteration order.
+
+A binding may contain hashes from multiple conflict causes in a single deduplicated conflict set. `CONFLICTED` and `evidence.conflicts` are directly coupled: a binding is marked `CONFLICTED` when and only when its computed conflict set is non-empty (unless overridden by higher-precedence `REVOKED`).
+
 ## Deterministic precedence
 
 State derivation uses this strict priority order:

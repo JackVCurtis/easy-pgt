@@ -304,7 +304,7 @@ REVOKED
 
 * [x] Implement endorsement weighting
 * [x] Apply rotation/revocation effects without deleting history
-* [ ] Surface conflict sets explicitly
+* [x] Surface conflict sets explicitly
 * [ ] Provide deterministic explainable trust decisions
 
 ---
