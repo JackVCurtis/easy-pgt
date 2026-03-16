@@ -24,6 +24,12 @@ interface NfcTechLike {
   Ndef: unknown;
 }
 
+interface CreateNfcAdapterOptions {
+  requestDeadlineMs?: number;
+}
+
+const DEFAULT_NFC_REQUEST_DEADLINE_MS = 12_000;
+
 function getNfcDependencies(): {
   NfcManager: NfcManagerLike;
   Ndef: NdefLike;
@@ -95,8 +101,9 @@ function parseBootstrapFromTag(tag: unknown): NfcBootstrapV1 | null {
   return null;
 }
 
-export function createNfcAdapter(): ProximityNfcPort {
+export function createNfcAdapter(options: CreateNfcAdapterOptions = {}): ProximityNfcPort {
   const dependencies = getNfcDependencies();
+  const requestDeadlineMs = options.requestDeadlineMs ?? DEFAULT_NFC_REQUEST_DEADLINE_MS;
 
   if (!dependencies) {
     return {
@@ -125,17 +132,58 @@ export function createNfcAdapter(): ProximityNfcPort {
     }
   };
 
+  const runWithRequestTimeout = async <T>(operation: () => Promise<T>): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<T>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('NFC_REQUEST_TIMEOUT'));
+          }, requestDeadlineMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  const requestNdefTechnology = async () => {
+    try {
+      await runWithRequestTimeout(() => NfcManager.requestTechnology(NfcTech.Ndef));
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NFC_REQUEST_TIMEOUT') {
+        await NfcManager.cancelTechnologyRequest().catch(() => undefined);
+      }
+      throw error;
+    }
+  };
+
+  const getTagWithTimeout = async () => {
+    try {
+      return await runWithRequestTimeout(() => NfcManager.getTag());
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NFC_REQUEST_TIMEOUT') {
+        await NfcManager.cancelTechnologyRequest().catch(() => undefined);
+      }
+      throw error;
+    }
+  };
+
   return {
     async writeBootstrapPayload(payload) {
       await ensureStarted();
-      await NfcManager.requestTechnology(NfcTech.Ndef);
+      await requestNdefTechnology();
       await NfcManager.ndefHandler.writeNdefMessage(encodeBootstrapPayload(payload, Ndef));
       await NfcManager.cancelTechnologyRequest();
     },
     async readBootstrapPayload() {
       await ensureStarted();
-      await NfcManager.requestTechnology(NfcTech.Ndef);
-      const tag = await NfcManager.getTag();
+      await requestNdefTechnology();
+      const tag = await getTagWithTimeout();
       await NfcManager.cancelTechnologyRequest();
       return parseBootstrapFromTag(tag);
     },

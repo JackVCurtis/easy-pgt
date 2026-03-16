@@ -57,6 +57,10 @@ function mapAsyncRuntimeError(error: unknown): string {
     return 'BLE_UNAVAILABLE_OR_DISABLED';
   }
 
+  if (message.includes('nfc_request_timeout')) {
+    return 'NFC_REQUEST_TIMEOUT';
+  }
+
   if (message.includes('timeout') || message.includes('not_found') || message.includes('no device')) {
     return 'SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND';
   }
