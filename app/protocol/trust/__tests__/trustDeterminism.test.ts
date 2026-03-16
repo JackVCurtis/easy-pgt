@@ -22,7 +22,6 @@ function endorsement(subjectBindingHash: string, overrides: Partial<EndorsementR
     endorser_binding_hash: 'endorser-default',
     subject_binding_hash: subjectBindingHash,
     endorsement_type: 'binding_valid',
-    confidence_level: 'low',
     signature: 'sig-endorse',
     ...overrides,
   };
@@ -47,8 +46,8 @@ describe('trust resolution determinism', () => {
 
     const records: DurableRecord[] = [
       binding,
-      endorsement(bindingHash, { endorser_binding_hash: 'endorser-z', confidence_level: 'high', signature: 'sig-z' }),
-      endorsement(bindingHash, { endorser_binding_hash: 'endorser-a', confidence_level: 'medium', signature: 'sig-a' }),
+      endorsement(bindingHash, { endorser_binding_hash: 'endorser-z', signature: 'sig-z' }),
+      endorsement(bindingHash, { endorser_binding_hash: 'endorser-a', signature: 'sig-a' }),
       revocation(bindingHash),
     ];
 

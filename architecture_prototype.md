@@ -93,7 +93,6 @@ EndorsementRecord {
   endorser_binding_hash
   subject_binding_hash
   endorsement_type
-  confidence_level
   signature
 }
 ```

@@ -78,7 +78,7 @@ Handshakes do not prove real-world identity truth. They only prove that two iden
 
 ## Endorsements
 
-An **endorsement** is a signed statement that one identity believes a specific identity binding is valid.
+An **endorsement** is a signed statement that one identity marks a specific identity binding as `binding_valid` or `binding_invalid`. Endorsement records store only this signed binary direction in v1; weighting is local policy on each device.
 
 Devices combine endorsements using **local trust policy** to determine whether a binding is:
 
@@ -301,7 +301,7 @@ CONFLICTED
 REVOKED
 ```
 
-* [x] Implement endorsement weighting
+* [x] Implement local-policy endorsement weighting (not persisted in durable records)
 * [x] Apply rotation/revocation effects without deleting history
 * [x] Surface conflict sets explicitly
 * [x] Provide deterministic explainable trust decisions

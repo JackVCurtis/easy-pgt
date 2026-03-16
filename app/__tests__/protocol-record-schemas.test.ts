@@ -29,7 +29,6 @@ describe('durable record schemas', () => {
         endorser_binding_hash: 'hash_endorser_binding',
         subject_binding_hash: 'hash_subject_binding',
         endorsement_type: 'binding_valid',
-        confidence_level: 'high',
         signature: 'sig_endorsement',
       },
     ],
@@ -112,5 +111,20 @@ describe('durable record schemas', () => {
 
     expect(identityBindingSchema.safeParse(missingFieldPayload).success).toBe(false);
     expect(durableRecordSchema.safeParse(missingFieldPayload).success).toBe(false);
+  });
+
+  it('rejects endorsement payloads with unknown fields', () => {
+    const payload = {
+      record_type: 'endorsement',
+      record_version: 1,
+      endorser_binding_hash: 'hash_endorser_binding',
+      subject_binding_hash: 'hash_subject_binding',
+      endorsement_type: 'binding_valid',
+      confidence_level: 'high',
+      signature: 'sig_endorsement',
+    };
+
+    expect(endorsementSchema.safeParse(payload).success).toBe(false);
+    expect(durableRecordSchema.safeParse(payload).success).toBe(false);
   });
 });

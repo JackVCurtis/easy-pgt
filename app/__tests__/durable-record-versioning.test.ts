@@ -18,7 +18,6 @@ const validRecords = [
     endorser_binding_hash: 'hash_endorser_binding',
     subject_binding_hash: 'hash_subject_binding',
     endorsement_type: 'binding_valid',
-    confidence_level: 'high',
     signature: 'sig_endorsement',
   },
   {
@@ -129,6 +128,20 @@ describe('decodeDurableRecord', () => {
     const result = decodeDurableRecord({
       ...validIdentityBinding,
       subject_identity_public_key: 123,
+    });
+
+    expectRejectedCode(result, 'schema_parse_failure');
+  });
+
+  it('rejects endorsement payloads that include deprecated confidence_level', () => {
+    const result = decodeDurableRecord({
+      record_type: 'endorsement',
+      record_version: 1,
+      endorser_binding_hash: 'hash_endorser_binding',
+      subject_binding_hash: 'hash_subject_binding',
+      endorsement_type: 'binding_valid',
+      confidence_level: 'high',
+      signature: 'sig_endorsement',
     });
 
     expectRejectedCode(result, 'schema_parse_failure');

@@ -22,7 +22,6 @@ function endorsement(subjectBindingHash: string, overrides: Partial<EndorsementR
     endorser_binding_hash: 'hash-endorser',
     subject_binding_hash: subjectBindingHash,
     endorsement_type: 'binding_valid',
-    confidence_level: 'low',
     signature: 'sig',
     ...overrides,
   };
@@ -80,10 +79,10 @@ describe('resolveTrustStates', () => {
     ]);
   });
 
-  it('derives TENTATIVE for one low valid endorsement', () => {
+  it('derives TENTATIVE for one valid endorsement under default local policy', () => {
     const binding = identityBinding();
     const bindingHash = deriveBindingHash(binding);
-    const low = endorsement(bindingHash, { confidence_level: 'low' });
+    const low = endorsement(bindingHash, {});
 
     expect(resolveTrustStates({ validatedRecords: [binding, low] })).toEqual([
       {
@@ -103,8 +102,7 @@ describe('resolveTrustStates', () => {
                 endorsementHash: deriveRecordHash(low),
                 endorserBindingHash: low.endorser_binding_hash,
                 endorsementType: low.endorsement_type,
-                confidenceLevel: low.confidence_level,
-                weight: 1,
+                localPolicyWeight: 1,
               },
             ],
           },
@@ -113,12 +111,18 @@ describe('resolveTrustStates', () => {
     ]);
   });
 
-  it('derives VERIFIED for one high valid endorsement', () => {
+  it('derives VERIFIED for one valid endorsement when local policy assigns higher weight', () => {
     const binding = identityBinding();
     const bindingHash = deriveBindingHash(binding);
-    const high = endorsement(bindingHash, { confidence_level: 'high' });
+    const high = endorsement(bindingHash, {});
 
-    const [result] = resolveTrustStates({ validatedRecords: [binding, high] });
+    const [result] = resolveTrustStates({
+      validatedRecords: [binding, high],
+      policy: {
+        endorsementWeigher: () => 3,
+        verifiedScoreThreshold: 3,
+      },
+    });
 
     expect(result.trustState).toBe('VERIFIED');
     expect(result.evidence.endorsementSummary).toMatchObject({
@@ -148,7 +152,7 @@ describe('resolveTrustStates', () => {
     });
   });
 
-  it('applies mixed positive/negative endorsements to lower weighted trust outcome', () => {
+  it('applies mixed positive/negative endorsements from local policy', () => {
     const binding = identityBinding();
     const bindingHash = deriveBindingHash(binding);
 
@@ -157,20 +161,17 @@ describe('resolveTrustStates', () => {
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-a',
         endorsement_type: 'binding_valid',
-        confidence_level: 'high',
-        signature: 'sig-a',
+            signature: 'sig-a',
       }),
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-b',
         endorsement_type: 'binding_valid',
-        confidence_level: 'low',
-        signature: 'sig-b',
+            signature: 'sig-b',
       }),
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-c',
         endorsement_type: 'binding_invalid',
-        confidence_level: 'medium',
-        signature: 'sig-c',
+            signature: 'sig-c',
       }),
     ];
 
@@ -178,9 +179,9 @@ describe('resolveTrustStates', () => {
 
     expect(result.trustState).toBe('TENTATIVE');
     expect(result.evidence.endorsementSummary).toMatchObject({
-      positiveScore: 4,
-      negativeScore: 2,
-      netScore: 2,
+      positiveScore: 2,
+      negativeScore: 1,
+      netScore: 1,
     });
   });
 
@@ -194,14 +195,12 @@ describe('resolveTrustStates', () => {
         endorsement(bindingHash, {
           endorser_binding_hash: 'endorser-a',
           endorsement_type: 'binding_valid',
-          confidence_level: 'high',
-          signature: 'sig-a',
+                signature: 'sig-a',
         }),
         endorsement(bindingHash, {
           endorser_binding_hash: 'endorser-a',
           endorsement_type: 'binding_invalid',
-          confidence_level: 'low',
-          signature: 'sig-a-2',
+                signature: 'sig-a-2',
         }),
       ],
     });
@@ -210,14 +209,12 @@ describe('resolveTrustStates', () => {
     const valid = endorsement(bindingHash, {
       endorser_binding_hash: 'endorser-a',
       endorsement_type: 'binding_valid',
-      confidence_level: 'high',
-      signature: 'sig-a',
+        signature: 'sig-a',
     });
     const invalid = endorsement(bindingHash, {
       endorser_binding_hash: 'endorser-a',
       endorsement_type: 'binding_invalid',
-      confidence_level: 'low',
-      signature: 'sig-a-2',
+        signature: 'sig-a-2',
     });
 
     const [resultWithEvidence] = resolveTrustStates({
@@ -277,7 +274,7 @@ describe('resolveTrustStates', () => {
   it('derives REVOKED when revocation targets binding regardless of score', () => {
     const binding = identityBinding();
     const bindingHash = deriveBindingHash(binding);
-    const high = endorsement(bindingHash, { confidence_level: 'high' });
+    const high = endorsement(bindingHash, {});
     const revoke = revocation(bindingHash);
 
     const [result] = resolveTrustStates({ validatedRecords: [binding, high, revoke] });
@@ -298,13 +295,11 @@ describe('resolveTrustStates', () => {
       keyRotation(bindingAHash, bindingBHash),
       endorsement(bindingAHash, {
         endorser_binding_hash: 'endorser-a',
-        confidence_level: 'high',
-        signature: 'sig-endorse-a',
+            signature: 'sig-endorse-a',
       }),
       endorsement(bindingBHash, {
         endorser_binding_hash: 'endorser-b',
-        confidence_level: 'high',
-        signature: 'sig-endorse-b',
+            signature: 'sig-endorse-b',
       }),
     ];
 
@@ -319,7 +314,7 @@ describe('resolveTrustStates', () => {
       },
     });
     expect(active).toMatchObject({
-      trustState: 'VERIFIED',
+      trustState: 'TENTATIVE',
       evidence: {
         endorsements: [deriveRecordHash(records[4])],
       },
@@ -339,8 +334,7 @@ describe('resolveTrustStates', () => {
       keyRotation(bindingAHash, bindingBHash),
       endorsement(bindingBHash, {
         endorser_binding_hash: 'endorser-b',
-        confidence_level: 'high',
-        signature: 'sig-endorse-b',
+            signature: 'sig-endorse-b',
       }),
       revokeBindingB,
     ];
@@ -363,16 +357,15 @@ describe('resolveTrustStates', () => {
     const bindingHash = deriveBindingHash(binding);
     const duplicate = endorsement(bindingHash, {
       endorser_binding_hash: 'endorser-a',
-      confidence_level: 'high',
-      signature: 'sig-a',
+        signature: 'sig-a',
     });
 
     const [result] = resolveTrustStates({ validatedRecords: [binding, duplicate, duplicate] });
 
     expect(result.evidence.endorsementSummary).toMatchObject({
-      positiveScore: 3,
+      positiveScore: 1,
       negativeScore: 0,
-      netScore: 3,
+      netScore: 1,
       endorsementHashes: [deriveRecordHash(duplicate)],
     });
   });
@@ -384,18 +377,15 @@ describe('resolveTrustStates', () => {
       binding,
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-c',
-        confidence_level: 'medium',
-        signature: 'sig-c',
+            signature: 'sig-c',
       }),
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-a',
-        confidence_level: 'high',
-        signature: 'sig-a',
+            signature: 'sig-a',
       }),
       endorsement(bindingHash, {
         endorser_binding_hash: 'endorser-b',
-        confidence_level: 'low',
-        signature: 'sig-b',
+            signature: 'sig-b',
       }),
     ];
 

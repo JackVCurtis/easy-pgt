@@ -18,8 +18,6 @@ const keyRotationSignaturesSchema = z.object({
 
 export const endorsementTypeSchema = z.enum(['binding_valid', 'binding_invalid']);
 
-export const confidenceLevelSchema = z.enum(['low', 'medium', 'high']);
-
 export const revocationReasonCodeSchema = z.enum([
   'key_compromised',
   'superseded',
@@ -41,9 +39,8 @@ export const endorsementSchema = baseRecordSchema.extend({
   endorser_binding_hash: z.string(),
   subject_binding_hash: z.string(),
   endorsement_type: endorsementTypeSchema,
-  confidence_level: confidenceLevelSchema,
   signature: z.string(),
-});
+}).strict();
 
 export const handshakeSchema = baseRecordSchema.extend({
   record_type: z.literal('handshake'),

@@ -52,7 +52,7 @@ This document defines the canonical runtime-validated payload shapes for all dur
 ## `endorsement`
 
 **Purpose**
-- Expresses a signed statement from one binding about another binding.
+- Expresses a signed binary statement from one binding about another binding (`binding_valid` or `binding_invalid`).
 
 **Canonical field list**
 - `record_type`
@@ -60,7 +60,6 @@ This document defines the canonical runtime-validated payload shapes for all dur
 - `endorser_binding_hash`
 - `subject_binding_hash`
 - `endorsement_type`
-- `confidence_level`
 - `signature`
 
 **Field definitions**
@@ -71,10 +70,6 @@ This document defines the canonical runtime-validated payload shapes for all dur
 - `endorsement_type`: enum string, one of:
   - `"binding_valid"`
   - `"binding_invalid"`
-- `confidence_level`: enum string, one of:
-  - `"low"`
-  - `"medium"`
-  - `"high"`
 - `signature`: signature string by the endorser.
 
 **Signature semantics**
@@ -88,7 +83,6 @@ This document defines the canonical runtime-validated payload shapes for all dur
   "endorser_binding_hash": "hash_endorser_binding",
   "subject_binding_hash": "hash_subject_binding",
   "endorsement_type": "binding_valid",
-  "confidence_level": "high",
   "signature": "sig_endorsement"
 }
 ```

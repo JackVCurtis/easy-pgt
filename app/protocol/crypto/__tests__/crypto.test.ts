@@ -16,7 +16,6 @@ const fixtureRecord: EndorsementRecord = {
   endorser_binding_hash: 'hash_endorser',
   subject_binding_hash: 'hash_subject',
   endorsement_type: 'binding_valid',
-  confidence_level: 'high',
   signature: 'placeholder',
 };
 
@@ -43,7 +42,6 @@ describe('protocol crypto wrapper', () => {
     const signatureA = signRecord(fixtureRecord, keypair.secretKey);
 
     const insertionOrderVariant = {
-      confidence_level: fixtureRecord.confidence_level,
       subject_binding_hash: fixtureRecord.subject_binding_hash,
       record_version: fixtureRecord.record_version,
       endorsement_type: fixtureRecord.endorsement_type,
@@ -54,7 +52,7 @@ describe('protocol crypto wrapper', () => {
 
     const signatureB = signRecord(insertionOrderVariant, keypair.secretKey);
 
-    expect(signatureA).toBe('jTpOzF+uiDEutQ/wP/5LD7eyHPIOyH9Ksfy8yMNIhoOynAlWMzVRM47I1Zo5EztfsvcxKOnKsgypOh8NuOwkCA==');
+    expect(signatureA).toBe('y/ZxiT9mMprF0mccwZTOhLEfCRE3goC0ATwGWX0B9uv58PjctDUn9d7rlMwDh7VYpivZXgzPe6iI6+g8KEVlBg==');
     expect(signatureA).toBe(signatureB);
   });
 
@@ -69,7 +67,7 @@ describe('protocol crypto wrapper', () => {
       verifySignature(
         {
           ...fixtureRecord,
-          confidence_level: 'low',
+          endorsement_type: 'binding_invalid',
         },
         signature,
         signer.publicKey

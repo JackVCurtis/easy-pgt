@@ -71,7 +71,6 @@ describe('validateRecord cryptographic checks', () => {
     endorser_binding_hash: 'hash_endorser_binding',
     subject_binding_hash: 'hash_subject_binding',
     endorsement_type: 'binding_valid' as const,
-    confidence_level: 'high' as const,
     signature: '',
   };
 
@@ -177,7 +176,7 @@ describe('validateRecord cryptographic checks', () => {
       },
     });
 
-    const tampered = { ...validEndorsement, confidence_level: 'low' as const };
+    const tampered = { ...validEndorsement, endorsement_type: 'binding_invalid' as const };
     expect(validateRecord(tampered, context)).toMatchObject({
       status: 'rejected',
       phase: 'cryptographic',

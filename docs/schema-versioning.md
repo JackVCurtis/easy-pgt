@@ -71,3 +71,8 @@ To add `v2` for a record type:
    - malformed version rejection,
    - unsupported version rejection.
 4. Keep unknown versions rejected until both registry entries and tests are in place.
+
+
+## Prototype endorsement amendment
+
+`endorsement` remains version `1`. In prototype stage, v1 was simplified in place to remove `confidence_level`; the active v1 shape now stores only signed endorsement direction plus signature. Unsupported/malformed versions remain fail-closed.

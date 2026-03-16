@@ -22,7 +22,6 @@ function endorsement(subjectBindingHash: string, overrides: Partial<EndorsementR
     endorser_binding_hash: 'endorser-default',
     subject_binding_hash: subjectBindingHash,
     endorsement_type: 'binding_valid',
-    confidence_level: 'low',
     signature: 'sig-endorse',
     ...overrides,
   };
@@ -35,14 +34,12 @@ describe('trust explainability evidence', () => {
 
     const valid = endorsement(bindingHash, {
       endorser_binding_hash: 'endorser-a',
-      confidence_level: 'high',
-      signature: 'sig-a',
+        signature: 'sig-a',
     });
     const invalid = endorsement(bindingHash, {
       endorser_binding_hash: 'endorser-b',
       endorsement_type: 'binding_invalid',
-      confidence_level: 'medium',
-      signature: 'sig-b',
+        signature: 'sig-b',
     });
 
     const records: DurableRecord[] = [binding, valid, invalid, valid];
@@ -56,9 +53,9 @@ describe('trust explainability evidence', () => {
     expect(result.evidence.revocations).toEqual([]);
     expect(result.evidence.conflicts).toEqual([]);
     expect(result.evidence.endorsementSummary).toMatchObject({
-      positiveScore: 3,
-      negativeScore: 2,
-      netScore: 1,
+      positiveScore: 1,
+      negativeScore: 1,
+      netScore: 0,
       endorsementHashes: sortedHashes,
     });
     expect(result.evidence.endorsementSummary.contributions).toEqual(
@@ -70,18 +67,16 @@ describe('trust explainability evidence', () => {
           endorsementHash: validHash,
           endorserBindingHash: 'endorser-a',
           endorsementType: 'binding_valid',
-          confidenceLevel: 'high',
-          weight: 3,
+                    localPolicyWeight: 1,
         },
         {
           endorsementHash: invalidHash,
           endorserBindingHash: 'endorser-b',
           endorsementType: 'binding_invalid',
-          confidenceLevel: 'medium',
-          weight: -2,
+                    localPolicyWeight: -1,
         },
       ])
     );
-    expect(result.trustState).toBe('TENTATIVE');
+    expect(result.trustState).toBe('CLAIMED');
   });
 });

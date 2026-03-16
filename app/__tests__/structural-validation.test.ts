@@ -17,7 +17,6 @@ describe('validateRecordStructure', () => {
     endorser_binding_hash: 'hash_endorser_binding',
     subject_binding_hash: 'hash_subject_binding',
     endorsement_type: 'binding_valid',
-    confidence_level: 'high',
     signature: 'sig_endorsement',
   };
 
@@ -143,6 +142,19 @@ describe('validateRecordStructure', () => {
       valid: false,
       reason: 'invalid_version',
       field: 'record_version',
+    });
+  });
+
+  it('rejects endorsement with deprecated confidence_level field', () => {
+    expect(
+      validateRecordStructure({
+        ...validEndorsement,
+        confidence_level: 'high',
+      })
+    ).toEqual({
+      valid: false,
+      reason: 'invalid_format',
+      field: 'confidence_level',
     });
   });
 });

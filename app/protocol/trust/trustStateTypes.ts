@@ -1,17 +1,25 @@
-import type { DurableRecord } from '@/app/protocol/records';
+import type { DurableRecord, EndorsementRecord } from '@/app/protocol/records';
 
 export type TrustState = 'CLAIMED' | 'TENTATIVE' | 'VERIFIED' | 'CONFLICTED' | 'REVOKED';
 
+export type EndorsementWeigher = (endorsement: EndorsementRecord) => number;
+
+export interface TrustResolutionPolicy {
+  endorsementWeigher: EndorsementWeigher;
+  tentativeScoreThreshold: number;
+  verifiedScoreThreshold: number;
+}
+
 export interface TrustResolutionInput {
   validatedRecords: DurableRecord[];
+  policy?: Partial<TrustResolutionPolicy>;
 }
 
 export interface EndorsementContribution {
   endorsementHash: string;
   endorserBindingHash: string;
   endorsementType: 'binding_valid' | 'binding_invalid';
-  confidenceLevel: 'low' | 'medium' | 'high';
-  weight: number;
+  localPolicyWeight: number;
 }
 
 export interface EndorsementSummary {

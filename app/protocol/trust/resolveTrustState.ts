@@ -2,34 +2,40 @@ import type { EndorsementRecord } from '@/app/protocol/records';
 
 import { buildTrustIndexes, deriveRecordHash } from './trustIndexes';
 import type {
-  EndorsementContribution,
   EndorsementSummary,
   TrustResolutionInput,
+  TrustResolutionPolicy,
   TrustResolutionResult,
   TrustState,
 } from './trustStateTypes';
 
-const ENDORSEMENT_WEIGHT_TABLE = {
-  binding_valid: {
-    low: 1,
-    medium: 2,
-    high: 3,
-  },
-  binding_invalid: {
-    low: -1,
-    medium: -2,
-    high: -3,
-  },
+const DEFAULT_ENDORSEMENT_WEIGHT_BY_TYPE = {
+  binding_valid: 1,
+  binding_invalid: -1,
 } as const;
 
-const TENTATIVE_SCORE_THRESHOLD = 1;
-const VERIFIED_SCORE_THRESHOLD = 3;
+const DEFAULT_TENTATIVE_SCORE_THRESHOLD = 1;
+const DEFAULT_VERIFIED_SCORE_THRESHOLD = 2;
+
+const DEFAULT_TRUST_RESOLUTION_POLICY: TrustResolutionPolicy = {
+  endorsementWeigher: (endorsement: EndorsementRecord) => DEFAULT_ENDORSEMENT_WEIGHT_BY_TYPE[endorsement.endorsement_type],
+  tentativeScoreThreshold: DEFAULT_TENTATIVE_SCORE_THRESHOLD,
+  verifiedScoreThreshold: DEFAULT_VERIFIED_SCORE_THRESHOLD,
+};
 
 function sortEvidence(hashes: Iterable<string>): string[] {
   return [...new Set(hashes)].sort();
 }
 
-function summarizeEndorsements(endorsements: EndorsementRecord[]): EndorsementSummary {
+function resolvePolicy(inputPolicy: TrustResolutionInput['policy']): TrustResolutionPolicy {
+  return {
+    endorsementWeigher: inputPolicy?.endorsementWeigher ?? DEFAULT_TRUST_RESOLUTION_POLICY.endorsementWeigher,
+    tentativeScoreThreshold: inputPolicy?.tentativeScoreThreshold ?? DEFAULT_TRUST_RESOLUTION_POLICY.tentativeScoreThreshold,
+    verifiedScoreThreshold: inputPolicy?.verifiedScoreThreshold ?? DEFAULT_TRUST_RESOLUTION_POLICY.verifiedScoreThreshold,
+  };
+}
+
+function summarizeEndorsements(endorsements: EndorsementRecord[], policy: TrustResolutionPolicy): EndorsementSummary {
   const uniqueByHash = new Map<string, EndorsementRecord>();
 
   for (const endorsement of endorsements) {
@@ -41,20 +47,19 @@ function summarizeEndorsements(endorsements: EndorsementRecord[]): EndorsementSu
 
   const hashedEndorsements = [...uniqueByHash.entries()].sort(([left], [right]) => left.localeCompare(right));
 
-  const contributions: EndorsementContribution[] = hashedEndorsements.map(([endorsementHash, endorsement]) => ({
+  const contributions = hashedEndorsements.map(([endorsementHash, endorsement]) => ({
     endorsementHash,
     endorserBindingHash: endorsement.endorser_binding_hash,
     endorsementType: endorsement.endorsement_type,
-    confidenceLevel: endorsement.confidence_level,
-    weight: ENDORSEMENT_WEIGHT_TABLE[endorsement.endorsement_type][endorsement.confidence_level],
+    localPolicyWeight: policy.endorsementWeigher(endorsement),
   }));
 
   const positiveScore = contributions
-    .filter((contribution) => contribution.weight > 0)
-    .reduce((total, contribution) => total + contribution.weight, 0);
+    .filter((contribution) => contribution.localPolicyWeight > 0)
+    .reduce((total, contribution) => total + contribution.localPolicyWeight, 0);
   const negativeScore = contributions
-    .filter((contribution) => contribution.weight < 0)
-    .reduce((total, contribution) => total + Math.abs(contribution.weight), 0);
+    .filter((contribution) => contribution.localPolicyWeight < 0)
+    .reduce((total, contribution) => total + Math.abs(contribution.localPolicyWeight), 0);
 
   return {
     positiveScore,
@@ -65,12 +70,12 @@ function summarizeEndorsements(endorsements: EndorsementRecord[]): EndorsementSu
   };
 }
 
-function resolveSupportState(endorsementSummary: EndorsementSummary): TrustState {
-  if (endorsementSummary.netScore >= VERIFIED_SCORE_THRESHOLD) {
+function resolveSupportState(endorsementSummary: EndorsementSummary, policy: TrustResolutionPolicy): TrustState {
+  if (endorsementSummary.netScore >= policy.verifiedScoreThreshold) {
     return 'VERIFIED';
   }
 
-  if (endorsementSummary.netScore >= TENTATIVE_SCORE_THRESHOLD) {
+  if (endorsementSummary.netScore >= policy.tentativeScoreThreshold) {
     return 'TENTATIVE';
   }
 
@@ -79,13 +84,14 @@ function resolveSupportState(endorsementSummary: EndorsementSummary): TrustState
 
 export function resolveTrustStates(input: TrustResolutionInput): TrustResolutionResult[] {
   const indexes = buildTrustIndexes(input.validatedRecords);
+  const policy = resolvePolicy(input.policy);
 
   return indexes.bindingOrder.map((bindingHash) => {
     const endorsements = indexes.endorsementsByBinding.get(bindingHash) ?? [];
     const revocations = indexes.revocationsByBinding.get(bindingHash) ?? [];
     const directConflicts = indexes.conflictsByBinding.get(bindingHash);
     const conflicts = directConflicts ? [...directConflicts] : [];
-    const endorsementSummary = summarizeEndorsements(endorsements);
+    const endorsementSummary = summarizeEndorsements(endorsements, policy);
 
     const evidence = {
       endorsements: sortEvidence(endorsementSummary.endorsementHashes),
@@ -108,7 +114,7 @@ export function resolveTrustStates(input: TrustResolutionInput): TrustResolution
         : conflicts.length > 0
           ? 'CONFLICTED'
           : isActiveBinding
-            ? resolveSupportState(endorsementSummary)
+            ? resolveSupportState(endorsementSummary, policy)
             : 'CLAIMED';
 
     return {
@@ -124,4 +130,9 @@ export function resolveTrustStates(input: TrustResolutionInput): TrustResolution
   });
 }
 
-export { ENDORSEMENT_WEIGHT_TABLE, TENTATIVE_SCORE_THRESHOLD, VERIFIED_SCORE_THRESHOLD };
+export {
+  DEFAULT_ENDORSEMENT_WEIGHT_BY_TYPE,
+  DEFAULT_TENTATIVE_SCORE_THRESHOLD,
+  DEFAULT_VERIFIED_SCORE_THRESHOLD,
+  DEFAULT_TRUST_RESOLUTION_POLICY,
+};
