@@ -1,8 +1,7 @@
-import nacl from 'tweetnacl';
-
 import type { DurableRecord } from '../records';
+import { verifySignature } from '../crypto/crypto';
+import { decodeBase64, decodePublicKey } from '../crypto/encoding';
 import { deriveSigningPayloadBytes } from './crypto/signingPayload';
-import { decodePublicKey, decodeSignature } from './crypto/signatureDecoding';
 
 export type CryptographicValidationErrorCode =
   | 'signature_decode_failed'
@@ -33,7 +32,7 @@ function verifyDetachedSignature(
   publicKey: string,
   field: string
 ): CryptographicValidationResult {
-  const decodedSignature = decodeSignature(signature);
+  const decodedSignature = decodeBase64(signature, 64);
   if (!decodedSignature) {
     return invalid('signature_decode_failed', field);
   }
@@ -43,7 +42,7 @@ function verifyDetachedSignature(
     return invalid('public_key_decode_failed', field);
   }
 
-  return nacl.sign.detached.verify(payloadBytes, decodedSignature, decodedPublicKey)
+  return verifySignature(payloadBytes, signature, publicKey)
     ? { valid: true }
     : invalid('invalid_signature', field);
 }
@@ -147,4 +146,3 @@ export function validateRecordCryptography(
   const unreachableRecordType = (record as DurableRecord & { record_type: string }).record_type;
   return invalid('unsupported_record_type', `record_type:${unreachableRecordType}`);
 }
-

@@ -7,3 +7,6 @@ export * from './validation';
 export * from './trust';
 
 export * from './transport';
+
+export * from './crypto/crypto';
+export * from './crypto/keyStorage';

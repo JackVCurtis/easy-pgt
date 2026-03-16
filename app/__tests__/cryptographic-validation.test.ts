@@ -1,30 +1,29 @@
-import nacl from 'tweetnacl';
-
 import { validateRecord } from '@/app/protocol/validation/validateRecord';
-import { deriveSigningPayloadBytes } from '@/app/protocol/validation/crypto/signingPayload';
+import { generateIdentityKeypair, signRecord } from '@/app/protocol/crypto/crypto';
 
-function toBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64');
-}
-
-function signRecordPayload(record: Record<string, unknown>, secretKey: Uint8Array): string {
-  const payloadBytes = deriveSigningPayloadBytes(record);
-  return toBase64(nacl.sign.detached(payloadBytes, secretKey));
+function malformedLengthSignature(): string {
+  return 'YQ==';
 }
 
 describe('validateRecord cryptographic checks', () => {
-  const identityA = nacl.sign.keyPair();
-  const identityB = nacl.sign.keyPair();
-  const identityC = nacl.sign.keyPair();
+  const identityA = generateIdentityKeypair({
+    seed: Uint8Array.from(Array.from({ length: 32 }, (_, index) => index + 1)),
+  });
+  const identityB = generateIdentityKeypair({
+    seed: Uint8Array.from(Array.from({ length: 32 }, (_, index) => index + 33)),
+  });
+  const identityC = generateIdentityKeypair({
+    seed: Uint8Array.from(Array.from({ length: 32 }, (_, index) => index + 65)),
+  });
 
   const keyByBindingHash: Record<string, string> = {
-    hash_binding_a: toBase64(identityA.publicKey),
-    hash_binding_b: toBase64(identityB.publicKey),
-    hash_endorser_binding: toBase64(identityA.publicKey),
-    hash_subject_binding: toBase64(identityB.publicKey),
-    hash_old_binding: toBase64(identityA.publicKey),
-    hash_new_binding: toBase64(identityB.publicKey),
-    hash_signer_binding: toBase64(identityA.publicKey),
+    hash_binding_a: identityA.publicKey,
+    hash_binding_b: identityB.publicKey,
+    hash_endorser_binding: identityA.publicKey,
+    hash_subject_binding: identityB.publicKey,
+    hash_old_binding: identityA.publicKey,
+    hash_new_binding: identityB.publicKey,
+    hash_signer_binding: identityA.publicKey,
   };
 
   const context = {
@@ -37,13 +36,13 @@ describe('validateRecord cryptographic checks', () => {
     record_type: 'identity_binding' as const,
     record_version: 1,
     subject_uuid: '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7',
-    subject_identity_public_key: toBase64(identityA.publicKey),
+    subject_identity_public_key: identityA.publicKey,
     key_epoch: 1,
     created_at: '2026-03-15T10:00:00.000Z',
     self_signature: '',
   };
 
-  validIdentityBinding.self_signature = signRecordPayload(validIdentityBinding, identityA.secretKey);
+  validIdentityBinding.self_signature = signRecord(validIdentityBinding, identityA.secretKey);
 
   const validHandshake = {
     record_type: 'handshake' as const,
@@ -54,8 +53,8 @@ describe('validateRecord cryptographic checks', () => {
     participant_a_merkle_root: 'hash_a123',
     participant_b_merkle_root: 'hash_b123',
     ephemeral_keys: {
-      participant_a: toBase64(identityA.publicKey),
-      participant_b: toBase64(identityB.publicKey),
+      participant_a: identityA.publicKey,
+      participant_b: identityB.publicKey,
     },
     signatures: {
       participant_a: '',
@@ -63,8 +62,8 @@ describe('validateRecord cryptographic checks', () => {
     },
   };
 
-  validHandshake.signatures.participant_a = signRecordPayload(validHandshake, identityA.secretKey);
-  validHandshake.signatures.participant_b = signRecordPayload(validHandshake, identityB.secretKey);
+  validHandshake.signatures.participant_a = signRecord(validHandshake, identityA.secretKey);
+  validHandshake.signatures.participant_b = signRecord(validHandshake, identityB.secretKey);
 
   const validEndorsement = {
     record_type: 'endorsement' as const,
@@ -76,7 +75,7 @@ describe('validateRecord cryptographic checks', () => {
     signature: '',
   };
 
-  validEndorsement.signature = signRecordPayload(validEndorsement, identityA.secretKey);
+  validEndorsement.signature = signRecord(validEndorsement, identityA.secretKey);
 
   const validKeyRotation = {
     record_type: 'key_rotation' as const,
@@ -91,8 +90,8 @@ describe('validateRecord cryptographic checks', () => {
     },
   };
 
-  validKeyRotation.signatures.old_key = signRecordPayload(validKeyRotation, identityA.secretKey);
-  validKeyRotation.signatures.new_key = signRecordPayload(validKeyRotation, identityB.secretKey);
+  validKeyRotation.signatures.old_key = signRecord(validKeyRotation, identityA.secretKey);
+  validKeyRotation.signatures.new_key = signRecord(validKeyRotation, identityB.secretKey);
 
   const validRevocation = {
     record_type: 'revocation' as const,
@@ -103,7 +102,7 @@ describe('validateRecord cryptographic checks', () => {
     signature: '',
   };
 
-  validRevocation.signature = signRecordPayload(validRevocation, identityA.secretKey);
+  validRevocation.signature = signRecord(validRevocation, identityA.secretKey);
 
   it('accepts a valid identity_binding self-signature and rejects tampered payloads', () => {
     expect(validateRecord(validIdentityBinding, context)).toEqual({
@@ -134,7 +133,7 @@ describe('validateRecord cryptographic checks', () => {
 
     const missingSig = {
       ...validHandshake,
-      signatures: { ...validHandshake.signatures, participant_b: 'YQ==' },
+      signatures: { ...validHandshake.signatures, participant_b: malformedLengthSignature() },
     };
     expect(validateRecord(missingSig, context)).toMatchObject({
       status: 'rejected',
@@ -145,7 +144,7 @@ describe('validateRecord cryptographic checks', () => {
 
     const invalidSig = {
       ...validHandshake,
-      signatures: { ...validHandshake.signatures, participant_b: toBase64(nacl.randomBytes(64)) },
+      signatures: { ...validHandshake.signatures, participant_b: signRecord(validHandshake, identityC.secretKey) },
     };
     expect(validateRecord(invalidSig, context)).toMatchObject({
       status: 'rejected',
@@ -157,7 +156,7 @@ describe('validateRecord cryptographic checks', () => {
     const wrongSigner = {
       ...validHandshake,
       signatures: {
-        participant_a: signRecordPayload(validHandshake, identityC.secretKey),
+        participant_a: signRecord(validHandshake, identityC.secretKey),
         participant_b: validHandshake.signatures.participant_b,
       },
     };
@@ -189,7 +188,7 @@ describe('validateRecord cryptographic checks', () => {
     const wrongSignerContext = {
       resolvePublicKeyByBindingHash(bindingHash: string) {
         if (bindingHash === 'hash_endorser_binding') {
-          return toBase64(identityC.publicKey);
+          return identityC.publicKey;
         }
         return keyByBindingHash[bindingHash];
       },
@@ -222,7 +221,7 @@ describe('validateRecord cryptographic checks', () => {
     const unauthorizedContext = {
       resolvePublicKeyByBindingHash(bindingHash: string) {
         if (bindingHash === 'hash_new_binding' || bindingHash === 'hash_signer_binding') {
-          return toBase64(identityC.publicKey);
+          return identityC.publicKey;
         }
         return keyByBindingHash[bindingHash];
       },
