@@ -99,7 +99,7 @@ describe('useProximityBootstrap', () => {
     expect(ble.connect).not.toHaveBeenCalled();
   });
 
-  it('uses QR scan intake + BLE scan/connect for reader flow', async () => {
+  it('reaches session_authenticated on happy path and preserves bootstrap binding fields', async () => {
     const ble = createMockBlePort();
     const { result } = renderHook(() => useProximityBootstrap({ ble }));
 
@@ -115,9 +115,26 @@ describe('useProximityBootstrap', () => {
     });
 
     expect(payload.bluetooth_service_uuid).toBe('6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
+    expect(payload.session_uuid).toBe('3df085f8-486f-42ac-929d-356082e4bf63');
+    expect(payload.identity_binding_hash).toBe('a'.repeat(64));
     expect(ble.scanForService).toHaveBeenCalledWith(payload.bluetooth_service_uuid, 10_000);
     expect(ble.connect).toHaveBeenCalledWith('device-1');
     expect(result.current.state.status).toBe('session_authenticated');
+  });
+
+  it('does not continue to BLE/session auth when QR payload is invalid', async () => {
+    const ble = createMockBlePort();
+    const { result } = renderHook(() => useProximityBootstrap({ ble }));
+
+    await act(async () => {
+      await result.current.ingestScannedBootstrap('not-json', result.current.localSignerPublicKeyBase64);
+      await result.current.startBleDiscoveryConnect();
+    });
+
+    expect(result.current.state.status).toBe('failed');
+    expect(result.current.state.failureReason).toBe('BOOTSTRAP_NOT_VALIDATED');
+    expect(ble.scanForService).not.toHaveBeenCalled();
+    expect(ble.connect).not.toHaveBeenCalled();
   });
 
   it('maps scan timeout errors to explicit failure reason', async () => {
