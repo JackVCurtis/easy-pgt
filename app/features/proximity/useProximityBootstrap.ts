@@ -2,15 +2,17 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
 import {
   createPendingBootstrapSession,
+  decodeQrBootstrapScan,
   deriveSessionConfirmation,
   deriveSessionContext,
-  signNfcBootstrap,
+  encodeQrBootstrapForDisplay,
+  signQrBootstrap,
   validateBleDiscoveryMatch,
-  validateNfcBootstrap,
+  validateQrBootstrap,
   validateSessionConfirmation,
-  type NfcBootstrapV1,
   type PendingBootstrapSession,
-  type SignableNfcBootstrapV1,
+  type QrBootstrapV1,
+  type SignableQrBootstrapV1,
   encodeBase64,
 } from '@/app/protocol/transport';
 
@@ -21,18 +23,16 @@ import {
 import { createProximitySessionUuid } from './proximityUuid';
 import { proximitySessionReducer } from './proximityState';
 import { createBleAdapter } from './transport/bleAdapter';
-import { createNfcAdapter } from './transport/nfcAdapter';
-import type { ProximityBlePort, ProximityNfcPort } from './transport/types';
+import type { ProximityBlePort } from './transport/types';
 
 type ProximityRole = 'writer' | 'reader';
 
 interface UseProximityBootstrapPorts {
-  nfc?: ProximityNfcPort;
   ble?: ProximityBlePort;
 }
 
 interface ProximityDiagnosticEvent {
-  source: 'nfc' | 'ble' | 'session' | 'system';
+  source: 'qr' | 'ble' | 'session' | 'system';
   action: string;
   detail: string;
   at: string;
@@ -49,16 +49,12 @@ function mapAsyncRuntimeError(error: unknown): string {
     return 'PERMISSION_DENIED';
   }
 
-  if (message.includes('nfc') && (message.includes('unavailable') || message.includes('disabled'))) {
-    return 'NFC_UNAVAILABLE_OR_DISABLED';
+  if (message.includes('camera')) {
+    return 'CAMERA_PERMISSION_DENIED';
   }
 
   if (message.includes('ble') && (message.includes('unavailable') || message.includes('disabled'))) {
     return 'BLE_UNAVAILABLE_OR_DISABLED';
-  }
-
-  if (message.includes('nfc_request_timeout')) {
-    return 'NFC_REQUEST_TIMEOUT';
   }
 
   if (message.includes('timeout') || message.includes('not_found') || message.includes('no device')) {
@@ -71,11 +67,11 @@ function mapAsyncRuntimeError(error: unknown): string {
 export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
   const [state, dispatch] = useReducer(proximitySessionReducer, { status: 'idle' as const });
   const [getLocalKeys] = useState(() => createProximityLocalKeysProvider());
-  const [bootstrapPayload, setBootstrapPayload] = useState<NfcBootstrapV1 | null>(null);
+  const [localSignerPublicKeyBase64, setLocalSignerPublicKeyBase64] = useState('');
+  const [bootstrapPayload, setBootstrapPayload] = useState<QrBootstrapV1 | null>(null);
+  const [bootstrapDisplayString, setBootstrapDisplayString] = useState<string>('');
   const [diagnostic, setDiagnostic] = useState<string>('');
   const [diagnosticEvents, setDiagnosticEvents] = useState<ProximityDiagnosticEvent[]>([]);
-  const [localSignerPublicKeyBase64, setLocalSignerPublicKeyBase64] = useState('');
-  const [nfcPort] = useState(() => ports.nfc ?? createNfcAdapter());
   const [blePort] = useState(() => ports.ble ?? createBleAdapter());
   const pendingSessionRef = useRef<PendingBootstrapSession | null>(null);
   const connectedDeviceIdRef = useRef<string | undefined>(undefined);
@@ -106,11 +102,11 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
   };
 
   const prepareWriterPayload = async (identityBindingHash: string, bluetoothServiceUuid: string) => {
-    dispatch({ type: 'set_status', status: 'nfc_preparing' });
-    pushDiagnosticEvent({ source: 'nfc', action: 'write_start', detail: 'Preparing signed bootstrap payload.' });
+    dispatch({ type: 'set_status', status: 'bootstrap_preparing' });
+    pushDiagnosticEvent({ source: 'qr', action: 'generate_start', detail: 'Preparing signed QR bootstrap payload.' });
 
     try {
-      const signable: SignableNfcBootstrapV1 = {
+      const signable: SignableQrBootstrapV1 = {
         version: 1,
         session_uuid: createProximitySessionUuid(),
         identity_binding_hash: identityBindingHash,
@@ -119,47 +115,63 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
         nonce: createProximityNonceHex(),
       };
 
-      const signed = signNfcBootstrap(signable, ensureLocalKeys().signer.secretKey);
-      await nfcPort.writeBootstrapPayload(signed);
+      const signed = signQrBootstrap(signable, ensureLocalKeys().signer.secretKey);
       setBootstrapPayload(signed);
-      setDiagnostic('Bootstrap payload generated and written over NFC.');
-      pushDiagnosticEvent({ source: 'nfc', action: 'write_success', detail: 'Payload written to NFC target.' });
-      dispatch({ type: 'set_status', status: 'nfc_ready' });
+      setBootstrapDisplayString(encodeQrBootstrapForDisplay(signed));
+      setDiagnostic('Bootstrap payload generated and ready for QR scan.');
+      pushDiagnosticEvent({ source: 'qr', action: 'generate_success', detail: 'Payload encoded for QR display.' });
+      dispatch({ type: 'set_status', status: 'bootstrap_ready' });
     } catch (error) {
       setBootstrapPayload(null);
-      failWithMappedError(error, 'Bootstrap payload write failed', 'nfc');
+      setBootstrapDisplayString('');
+      failWithMappedError(error, 'Bootstrap payload generation failed', 'qr');
     }
   };
 
-  const readBootstrapViaNfc = async (expectedSignerPublicKey: string) => {
-    dispatch({ type: 'set_status', status: 'nfc_received' });
-    pushDiagnosticEvent({ source: 'nfc', action: 'read_start', detail: 'Waiting for NFC bootstrap payload.' });
+  const ingestScannedBootstrap = async (scannedPayload: string, expectedSignerPublicKey: string) => {
+    dispatch({ type: 'set_status', status: 'bootstrap_scanned' });
+    pushDiagnosticEvent({ source: 'qr', action: 'scan_start', detail: 'QR payload scanned; decoding and validating.' });
 
     try {
-      const receivedPayload = (await nfcPort.readBootstrapPayload()) ?? {};
-      const validation = validateNfcBootstrap(receivedPayload, expectedSignerPublicKey);
-      if (!validation.valid) {
-        const reason = `${validation.reason}:${validation.field}`;
-        setDiagnostic(`Bootstrap validation failed: ${reason}`);
-        pushDiagnosticEvent({ source: 'nfc', action: 'read_invalid', detail: reason });
+      const decoded = decodeQrBootstrapScan(scannedPayload);
+      if (!decoded.valid) {
+        const reason = `${decoded.reason}:${decoded.field}`;
+        setDiagnostic(`Bootstrap decode failed: ${reason}`);
+        pushDiagnosticEvent({ source: 'qr', action: 'scan_invalid', detail: reason });
         dispatch({ type: 'failed', reason });
         return;
       }
 
-      const pending = createPendingBootstrapSession(receivedPayload as NfcBootstrapV1);
+      const signerPublicKey = expectedSignerPublicKey || toBase64(ensureLocalKeys().signer.publicKey);
+      const validation = validateQrBootstrap(decoded.payload, signerPublicKey);
+      if (!validation.valid) {
+        const reason = `${validation.reason}:${validation.field}`;
+        setDiagnostic(`Bootstrap validation failed: ${reason}`);
+        pushDiagnosticEvent({ source: 'qr', action: 'scan_invalid', detail: reason });
+        dispatch({ type: 'failed', reason });
+        return;
+      }
+
+      const pending = createPendingBootstrapSession(decoded.payload);
       pendingSessionRef.current = pending;
-      setDiagnostic('Bootstrap payload validated. Ready for BLE discovery/connect.');
-      pushDiagnosticEvent({ source: 'nfc', action: 'read_valid', detail: 'Signed payload validated and staged.' });
+      setDiagnostic('QR bootstrap validated. Ready for BLE discovery/connect.');
+      pushDiagnosticEvent({ source: 'qr', action: 'scan_valid', detail: 'Signed QR payload validated and staged.' });
       dispatch({ type: 'set_status', status: 'bootstrap_validated' });
     } catch (error) {
-      failWithMappedError(error, 'Bootstrap payload read failed', 'nfc');
+      failWithMappedError(error, 'Bootstrap payload scan failed', 'qr');
     }
+  };
+
+  const handleCameraPermissionDenied = () => {
+    setDiagnostic('Camera permission denied. QR scan cannot proceed.');
+    pushDiagnosticEvent({ source: 'qr', action: 'camera_permission_denied', detail: 'Fail-closed before BLE auth progression.' });
+    dispatch({ type: 'failed', reason: 'CAMERA_PERMISSION_DENIED' });
   };
 
   const startBleDiscoveryConnect = async () => {
     const pending = pendingSessionRef.current;
     if (!pending) {
-      setDiagnostic('Cannot start BLE flow before NFC bootstrap validation.');
+      setDiagnostic('Cannot start BLE flow before QR bootstrap validation.');
       dispatch({ type: 'failed', reason: 'BOOTSTRAP_NOT_VALIDATED' });
       return;
     }
@@ -216,7 +228,7 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
         return;
       }
 
-      setDiagnostic('Session authenticated and bound to NFC bootstrap data.');
+      setDiagnostic('Session authenticated and bound to QR bootstrap data.');
       pushDiagnosticEvent({ source: 'session', action: 'authenticated', detail: `Device ${connectedDevice.id} authenticated.` });
       dispatch({ type: 'set_status', status: 'session_authenticated' });
     } catch (error) {
@@ -225,17 +237,17 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
   };
 
   const releaseSessions = useCallback(async () => {
-    await nfcPort.cancel();
     await blePort.stopAdvertising();
     await blePort.disconnect(connectedDeviceIdRef.current);
     connectedDeviceIdRef.current = undefined;
     pendingSessionRef.current = null;
-    pushDiagnosticEvent({ source: 'system', action: 'session_reset', detail: 'Cancelled NFC/BLE in-flight operations.' });
-  }, [blePort, nfcPort]);
+    pushDiagnosticEvent({ source: 'system', action: 'session_reset', detail: 'Cancelled BLE in-flight operations.' });
+  }, [blePort]);
 
   const reset = async () => {
     await releaseSessions();
     setBootstrapPayload(null);
+    setBootstrapDisplayString('');
     setDiagnostic('');
     setDiagnosticEvents([]);
     dispatch({ type: 'reset' });
@@ -246,21 +258,22 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       releaseSessions()
         .catch(() => undefined)
         .finally(() => {
-          nfcPort.cleanup().catch(() => undefined);
           blePort.cleanup().catch(() => undefined);
         });
     };
-  }, [releaseSessions, blePort, nfcPort]);
+  }, [releaseSessions, blePort]);
 
   return {
     state,
     roleOptions: ['writer', 'reader'] as ProximityRole[],
     bootstrapPayload,
+    bootstrapDisplayString,
     diagnostic,
     diagnosticEvents,
     localSignerPublicKeyBase64,
     prepareWriterPayload,
-    readBootstrapViaNfc,
+    ingestScannedBootstrap,
+    handleCameraPermissionDenied,
     startBleDiscoveryConnect,
     reset,
   };

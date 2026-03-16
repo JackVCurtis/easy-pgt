@@ -6,18 +6,19 @@ import { AppCard } from '@/components/ui/app-card';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
+import { ProximityQrDisplay } from './components/ProximityQrDisplay';
+import { ProximityQrScanner } from './components/ProximityQrScanner';
 import type { ProximitySessionState } from './proximityState';
 import { useProximityBootstrap } from './useProximityBootstrap';
 
 const FRIENDLY_FAILURE_COPY: Record<string, string> = {
-  PERMISSION_DENIED: 'Permission was denied by the OS. Enable NFC/BLE permissions and retry.',
-  NFC_UNAVAILABLE_OR_DISABLED: 'NFC is unavailable or disabled on this device.',
+  PERMISSION_DENIED: 'Permission was denied by the OS. Enable required permissions and retry.',
+  CAMERA_PERMISSION_DENIED: 'Camera permission denied. QR scanning is blocked and BLE auth is fail-closed.',
   BLE_UNAVAILABLE_OR_DISABLED: 'BLE is unavailable or disabled on this device.',
   SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND: 'No matching BLE device was found before timeout.',
   SIGNATURE_INVALID: 'Bootstrap signature is invalid.',
   MISMATCH: 'Bootstrap and discovery data mismatch detected.',
 };
-
 
 function normalizeFailureReason(reason: string): string {
   const [baseReason] = reason.split(':');
@@ -51,11 +52,13 @@ export function ProximityBootstrapPanel() {
   const {
     state,
     bootstrapPayload,
+    bootstrapDisplayString,
     diagnostic,
     diagnosticEvents,
     localSignerPublicKeyBase64,
     prepareWriterPayload,
-    readBootstrapViaNfc,
+    ingestScannedBootstrap,
+    handleCameraPermissionDenied,
     startBleDiscoveryConnect,
     reset,
   } = useProximityBootstrap();
@@ -64,11 +67,10 @@ export function ProximityBootstrapPanel() {
   const [serviceUuid, setServiceUuid] = useState('6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
 
   const isWorking = useMemo(
-    () => ['nfc_preparing', 'nfc_received', 'ble_scanning', 'ble_connecting', 'session_authenticating'].includes(state.status),
+    () => ['bootstrap_preparing', 'bootstrap_scanned', 'ble_scanning', 'ble_connecting', 'session_authenticating'].includes(state.status),
     [state.status]
   );
-  const canWriteBootstrap = state.status === 'idle' || state.status === 'nfc_ready' || state.status === 'failed';
-  const canReadBootstrap = state.status === 'idle' || state.status === 'nfc_ready' || state.status === 'failed';
+  const canGenerateBootstrap = state.status === 'idle' || state.status === 'bootstrap_ready' || state.status === 'failed';
   const canStartBle = state.status === 'bootstrap_validated';
   const canReset = state.status !== 'idle' || diagnosticEvents.length > 0;
 
@@ -95,19 +97,23 @@ export function ProximityBootstrapPanel() {
       />
 
       <AppButton
-        label="Write bootstrap to NFC tag/device"
+        label="Generate QR bootstrap"
         onPress={() => {
           void prepareWriterPayload(identityBindingHash, serviceUuid);
         }}
-        disabled={!canWriteBootstrap || isWorking}
+        disabled={!canGenerateBootstrap || isWorking}
       />
-      <AppButton
-        label="Read bootstrap via NFC"
-        onPress={() => {
-          void readBootstrapViaNfc(localSignerPublicKeyBase64);
+
+      <ProximityQrDisplay value={bootstrapDisplayString} />
+
+      <ProximityQrScanner
+        enabled={Boolean(bootstrapDisplayString) || state.status === 'failed' || state.status === 'idle'}
+        onPermissionDenied={handleCameraPermissionDenied}
+        onScanned={(raw) => {
+          void ingestScannedBootstrap(raw, localSignerPublicKeyBase64);
         }}
-        disabled={!canReadBootstrap || isWorking}
       />
+
       <AppButton
         label="Start BLE discovery/connect"
         onPress={() => {

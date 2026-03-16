@@ -1,8 +1,8 @@
 export type BootstrapSessionStatus =
   | 'idle'
-  | 'nfc_preparing'
-  | 'nfc_ready'
-  | 'nfc_received'
+  | 'bootstrap_preparing'
+  | 'bootstrap_ready'
+  | 'bootstrap_scanned'
   | 'bootstrap_validated'
   | 'ble_advertising'
   | 'ble_scanning'

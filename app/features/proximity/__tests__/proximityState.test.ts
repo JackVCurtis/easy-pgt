@@ -7,7 +7,7 @@ describe('proximitySessionReducer', () => {
   };
 
   it('transitions through success statuses deterministically', () => {
-    const preparing = proximitySessionReducer(initial, { type: 'set_status', status: 'nfc_preparing' });
+    const preparing = proximitySessionReducer(initial, { type: 'set_status', status: 'bootstrap_preparing' });
     const validated = proximitySessionReducer(preparing, { type: 'set_status', status: 'bootstrap_validated' });
     const authenticated = proximitySessionReducer(validated, { type: 'set_status', status: 'session_authenticated' });
 
