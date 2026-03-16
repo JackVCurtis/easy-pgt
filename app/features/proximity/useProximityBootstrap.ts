@@ -17,6 +17,7 @@ import {
   createProximityLocalKeysProvider,
   createProximityNonceHex,
 } from './proximityKeys';
+import { createProximitySessionUuid } from './proximityUuid';
 import { proximitySessionReducer } from './proximityState';
 
 type ProximityRole = 'writer' | 'reader';
@@ -46,7 +47,7 @@ export function useProximityBootstrap() {
     dispatch({ type: 'set_status', status: 'nfc_preparing' });
     const signable: SignableNfcBootstrapV1 = {
       version: 1,
-      session_uuid: crypto.randomUUID(),
+      session_uuid: createProximitySessionUuid(),
       identity_binding_hash: identityBindingHash,
       ephemeral_public_key: toBase64(ensureLocalKeys().ephemeral.publicKey),
       bluetooth_service_uuid: bluetoothServiceUuid,
