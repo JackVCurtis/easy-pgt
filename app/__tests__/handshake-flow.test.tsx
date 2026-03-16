@@ -1,8 +1,8 @@
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from "@testing-library/react-native";
 
-import HandshakeScreen from '@/app/(tabs)/handshake';
+import HandshakeScreen from "@/app/(tabs)/handshake";
 
-describe('Handshake flow', () => {
+describe("Handshake flow", () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -12,17 +12,20 @@ describe('Handshake flow', () => {
     jest.useRealTimers();
   });
 
-  it('guides the user through sharing details and confirms a generated counterparty name', () => {
+  it("guides the user through sharing details and confirms a generated counterparty name", () => {
     const { getByText, getByPlaceholderText } = render(<HandshakeScreen />);
 
-    fireEvent.press(getByText('Start Handshake'));
+    fireEvent.press(getByText("Start Handshake"));
 
-    expect(getByText('Share details for this handshake')).toBeTruthy();
+    expect(getByText("Share details for this handshake")).toBeTruthy();
 
-    fireEvent.changeText(getByPlaceholderText('Enter the name you want to share'), 'Taylor Morgan');
-    fireEvent.press(getByText('Continue to NFC exchange'));
+    fireEvent.changeText(
+      getByPlaceholderText("Enter the name you want to share"),
+      "Taylor Morgan",
+    );
+    fireEvent.press(getByText("Continue to NFC exchange"));
 
-    expect(getByText('Hold phones next to each other')).toBeTruthy();
+    expect(getByText("Hold phones next to each other")).toBeTruthy();
 
     for (let i = 0; i < 5; i += 1) {
       act(() => {
@@ -30,10 +33,24 @@ describe('Handshake flow', () => {
       });
     }
 
-    expect(getByText('Handshake complete')).toBeTruthy();
-    expect(getByText('Connected with Avery Shaw.')).toBeTruthy();
-    expect(getByText('Name you shared: Taylor Morgan')).toBeTruthy();
-    expect(getByText('Mutual connections (1 step)')).toBeTruthy();
-    expect(getByText('You → Jordan Miles → Avery Shaw')).toBeTruthy();
+    expect(getByText("Handshake complete")).toBeTruthy();
+    expect(getByText("Connected with Avery Shaw.")).toBeTruthy();
+    expect(getByText("Name you shared: Taylor Morgan")).toBeTruthy();
+    expect(getByText("Mutual connections (1 step)")).toBeTruthy();
+    expect(getByText("You → Jordan Miles → Avery Shaw")).toBeTruthy();
+  });
+
+  it("uses a scrollable column layout to avoid overlapping handshake content", () => {
+    const { getByTestId } = render(<HandshakeScreen />);
+
+    const scrollColumn = getByTestId("handshake-scroll-column");
+
+    expect(scrollColumn.props.contentContainerStyle).toEqual(
+      expect.objectContaining({
+        flexGrow: 1,
+        justifyContent: "space-between",
+        alignItems: "stretch",
+      }),
+    );
   });
 });
