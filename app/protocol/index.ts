@@ -3,3 +3,5 @@ export * from './records';
 export * from './versions';
 
 export * from './validation';
+
+export * from './trust';

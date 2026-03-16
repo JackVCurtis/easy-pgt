@@ -292,7 +292,7 @@ conflicted
 
 ## 3) Trust resolution engine
 
-* [ ] Implement local trust state derivation
+* [x] Implement local trust state derivation
 
 ```
 CLAIMED
