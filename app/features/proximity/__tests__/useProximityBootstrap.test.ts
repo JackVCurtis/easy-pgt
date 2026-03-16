@@ -111,6 +111,22 @@ describe('useProximityBootstrap', () => {
     expect(result.current.state.failureReason).toBe('PERMISSION_DENIED');
   });
 
+
+  it('maps NFC request timeout errors to explicit failure reason and failed status', async () => {
+    const nfc = createMockNfcPort();
+    const ble = createMockBlePort();
+    nfc.readBootstrapPayload.mockRejectedValueOnce(new Error('NFC_REQUEST_TIMEOUT'));
+
+    const { result } = renderHook(() => useProximityBootstrap({ nfc, ble }));
+
+    await act(async () => {
+      await result.current.readBootstrapViaNfc(result.current.localSignerPublicKeyBase64);
+    });
+
+    expect(result.current.state.status).toBe('failed');
+    expect(result.current.state.failureReason).toBe('NFC_REQUEST_TIMEOUT');
+  });
+
   it('uses NFC read + BLE scan/connect for reader flow', async () => {
     const nfc = createMockNfcPort();
     const ble = createMockBlePort();
