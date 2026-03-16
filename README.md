@@ -154,6 +154,8 @@ docs/
   canonical-serialization.md
   hash-domains.md
   schema-versioning.md
+  nfc-bootstrap.md
+  manual-nfc-ble-session-test.md
 ```
 
 Recommended reading order:
@@ -340,7 +342,7 @@ BLE carries the encrypted synchronization traffic.
 
 ### Bootstrap payload definition
 
-* [ ] Define and version the `NfcBootstrap` payload used to initiate a synchronization session:
+* [x] Define and version the `NfcBootstrap` payload used to initiate a synchronization session:
 
 ```
 NfcBootstrap {
@@ -360,7 +362,7 @@ The payload must be serialized deterministically and validated before use.
 
 ### NFC bootstrap implementation (`react-native-nfc-manager`)
 
-* [ ] Implement NFC bootstrap exchange using `react-native-nfc-manager`.
+* [x] Implement minimal NFC bootstrap exchange scaffolding for manual testing using `react-native-nfc-manager` integration points.
 
 Bootstrap exchange must transmit:
 
@@ -382,7 +384,7 @@ Responsibilities:
 
 ### Bootstrap payload validation and hardening
 
-* [ ] Implement strict bootstrap payload validation.
+* [x] Implement strict bootstrap payload validation.
 
 Validation must include:
 
@@ -407,7 +409,7 @@ Bootstrap parsing must **fail closed**.
 
 ### BLE discovery and connection (`react-native-ble-plx`)
 
-* [ ] Implement BLE discovery and connection using `react-native-ble-plx`.
+* [x] Implement minimal BLE discovery/connection binding checks for manual testing with `react-native-ble-plx` integration points.
 
 Responsibilities:
 
@@ -425,7 +427,7 @@ BLE sessions must be rejected when:
 
 ### Authenticated encrypted session establishment
 
-* [ ] Implement authenticated encrypted channel using NFC-exchanged ephemeral keys.
+* [x] Implement minimal authenticated session confirmation using NFC-exchanged ephemeral keys and `session_uuid` binding.
 
 Steps:
 

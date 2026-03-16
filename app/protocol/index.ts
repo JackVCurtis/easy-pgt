@@ -5,3 +5,5 @@ export * from './versions';
 export * from './validation';
 
 export * from './trust';
+
+export * from './transport';

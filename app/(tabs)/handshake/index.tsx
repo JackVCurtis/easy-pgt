@@ -10,6 +10,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { ProximityBootstrapPanel } from '@/app/features/proximity/ProximityBootstrapPanel';
 
 type HandshakeStage = 'idle' | 'collecting' | 'exchanging' | 'complete';
 
@@ -222,6 +223,7 @@ export default function HandshakeScreen() {
 
           <View style={styles.previewSection}>
             <AppButton label="Open Connections" onPress={() => router.push('/connections')} />
+            <ProximityBootstrapPanel />
           </View>
         </View>
       </AppCard>
