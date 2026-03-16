@@ -67,7 +67,7 @@ function mapAsyncRuntimeError(error: unknown): string {
 export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
   const [state, dispatch] = useReducer(proximitySessionReducer, { status: 'idle' as const });
   const [getLocalKeys] = useState(() => createProximityLocalKeysProvider());
-  const [localSignerPublicKeyBase64] = useState(() => toBase64(getLocalKeys().signer.publicKey));
+  const [localSignerPublicKeyBase64, setLocalSignerPublicKeyBase64] = useState('');
   const [bootstrapPayload, setBootstrapPayload] = useState<QrBootstrapV1 | null>(null);
   const [bootstrapDisplayString, setBootstrapDisplayString] = useState<string>('');
   const [diagnostic, setDiagnostic] = useState<string>('');
@@ -80,8 +80,15 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
     setDiagnosticEvents((previous) => [...previous, { ...event, at: new Date().toISOString() }]);
   };
 
-  const ensureLocalKeys = () => getLocalKeys();
+  const ensureLocalKeys = () => {
+    const localKeys = getLocalKeys();
 
+    if (!localSignerPublicKeyBase64) {
+      setLocalSignerPublicKeyBase64(toBase64(localKeys.signer.publicKey));
+    }
+
+    return localKeys;
+  };
 
   const failWithMappedError = (error: unknown, prefix: string, source: ProximityDiagnosticEvent['source']) => {
     const reason = mapAsyncRuntimeError(error);
@@ -135,7 +142,8 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
         return;
       }
 
-      const validation = validateQrBootstrap(decoded.payload, expectedSignerPublicKey);
+      const signerPublicKey = expectedSignerPublicKey || toBase64(ensureLocalKeys().signer.publicKey);
+      const validation = validateQrBootstrap(decoded.payload, signerPublicKey);
       if (!validation.valid) {
         const reason = `${validation.reason}:${validation.field}`;
         setDiagnostic(`Bootstrap validation failed: ${reason}`);
