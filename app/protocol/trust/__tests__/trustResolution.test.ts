@@ -1,4 +1,4 @@
-import type { DurableRecord, EndorsementRecord, IdentityBindingRecord, RevocationRecord } from '@/app/protocol/records';
+import type { DurableRecord, EndorsementRecord, IdentityBindingRecord, KeyRotationRecord, RevocationRecord } from '@/app/protocol/records';
 import { resolveTrustStates } from '@/app/protocol/trust/resolveTrustState';
 import { deriveBindingHash, deriveRecordHash } from '@/app/protocol/trust/trustIndexes';
 
@@ -36,6 +36,22 @@ function revocation(targetRecordHash: string, overrides: Partial<RevocationRecor
     target_record_hash: targetRecordHash,
     reason_code: 'other',
     signature: 'sig',
+    ...overrides,
+  };
+}
+
+function keyRotation(oldBindingHash: string, newBindingHash: string, overrides: Partial<KeyRotationRecord> = {}): KeyRotationRecord {
+  return {
+    record_type: 'key_rotation',
+    record_version: 1,
+    subject_uuid: 'uuid-1',
+    old_binding_hash: oldBindingHash,
+    new_binding_hash: newBindingHash,
+    rotation_counter: 1,
+    signatures: {
+      old_key: 'sig-old',
+      new_key: 'sig-new',
+    },
     ...overrides,
   };
 }
@@ -238,6 +254,78 @@ describe('resolveTrustStates', () => {
 
     expect(result.trustState).toBe('REVOKED');
     expect(result.evidence.revocations).toEqual([deriveRecordHash(revoke)]);
+  });
+
+  it('keeps rotated bindings historical while only active binding can become supported', () => {
+    const bindingA = identityBinding({ key_epoch: 0, subject_identity_public_key: 'pub-key-a' });
+    const bindingB = identityBinding({ key_epoch: 1, subject_identity_public_key: 'pub-key-b', created_at: '2026-03-15T11:00:00.000Z' });
+    const bindingAHash = deriveBindingHash(bindingA);
+    const bindingBHash = deriveBindingHash(bindingB);
+
+    const records: DurableRecord[] = [
+      bindingA,
+      bindingB,
+      keyRotation(bindingAHash, bindingBHash),
+      endorsement(bindingAHash, {
+        endorser_binding_hash: 'endorser-a',
+        confidence_level: 'high',
+        signature: 'sig-endorse-a',
+      }),
+      endorsement(bindingBHash, {
+        endorser_binding_hash: 'endorser-b',
+        confidence_level: 'high',
+        signature: 'sig-endorse-b',
+      }),
+    ];
+
+    const results = resolveTrustStates({ validatedRecords: records });
+    const historical = results.find((result) => result.bindingHash === bindingAHash);
+    const active = results.find((result) => result.bindingHash === bindingBHash);
+
+    expect(historical).toMatchObject({
+      trustState: 'CLAIMED',
+      evidence: {
+        endorsements: [deriveRecordHash(records[3])],
+      },
+    });
+    expect(active).toMatchObject({
+      trustState: 'VERIFIED',
+      evidence: {
+        endorsements: [deriveRecordHash(records[4])],
+      },
+    });
+  });
+
+  it('keeps active rotated binding revoked when revocation targets it', () => {
+    const bindingA = identityBinding({ key_epoch: 0, subject_identity_public_key: 'pub-key-a' });
+    const bindingB = identityBinding({ key_epoch: 1, subject_identity_public_key: 'pub-key-b', created_at: '2026-03-15T11:00:00.000Z' });
+    const bindingAHash = deriveBindingHash(bindingA);
+    const bindingBHash = deriveBindingHash(bindingB);
+    const revokeBindingB = revocation(bindingBHash, { signature: 'sig-revoke-b' });
+
+    const records: DurableRecord[] = [
+      bindingA,
+      bindingB,
+      keyRotation(bindingAHash, bindingBHash),
+      endorsement(bindingBHash, {
+        endorser_binding_hash: 'endorser-b',
+        confidence_level: 'high',
+        signature: 'sig-endorse-b',
+      }),
+      revokeBindingB,
+    ];
+
+    const results = resolveTrustStates({ validatedRecords: records });
+    const historical = results.find((result) => result.bindingHash === bindingAHash);
+    const active = results.find((result) => result.bindingHash === bindingBHash);
+
+    expect(historical?.trustState).toBe('CLAIMED');
+    expect(active).toMatchObject({
+      trustState: 'REVOKED',
+      evidence: {
+        revocations: [deriveRecordHash(revokeBindingB)],
+      },
+    });
   });
 
   it('does not double count duplicate endorsement records', () => {

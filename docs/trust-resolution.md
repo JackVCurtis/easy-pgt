@@ -54,6 +54,16 @@ The engine deterministically builds in-memory indexes:
 
 Record hashes are deterministically derived from canonical record bytes (`canonicalSerialize`) and SHA-256. Hashes are represented as `hash_<hex>`.
 
+## Rotation and revocation effects
+
+`key_rotation` records are used to derive an active binding per `subject_uuid` without mutating stored history.
+
+- The engine builds a deterministic per-subject rotation chain from validated `key_rotation` records.
+- A linear chain selects a single active binding head (`A -> B` means `B` is active and `A` is historical evidence).
+- If a subject has multiple bindings but no valid linear rotation chain, bindings remain UUID-conflicted.
+- Historical bindings remain in output with their own evidence, but only the active binding can resolve to `TENTATIVE` or `VERIFIED`.
+- `revocation` records targeting a binding hash always force `REVOKED`, regardless of endorsement score or active status.
+
 ## Conflict detection rules
 
 A binding is marked conflicted when any of the following are present:

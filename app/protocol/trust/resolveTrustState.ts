@@ -102,12 +102,18 @@ export function resolveTrustStates(input: TrustResolutionInput): TrustResolution
       },
     };
 
+    const subjectUuid = indexes.bindingsByHash.get(bindingHash)?.subject_uuid;
+    const activeBindingHash = subjectUuid ? indexes.activeBindingBySubject.get(subjectUuid) : undefined;
+    const isActiveBinding = activeBindingHash === bindingHash;
+
     const trustState: TrustState =
       revocations.length > 0
         ? 'REVOKED'
         : conflicts.length > 0
           ? 'CONFLICTED'
-          : resolveSupportState(endorsementSummary);
+          : isActiveBinding
+            ? resolveSupportState(endorsementSummary)
+            : 'CLAIMED';
 
     return {
       bindingHash,
