@@ -9,6 +9,8 @@ import type {
 } from '@/app/protocol/records';
 import { canonicalSerialize } from '@/app/protocol/validation/crypto/signingPayload';
 
+import { addConflictHashes } from './conflictDetection';
+
 export interface TrustIndexes {
   bindingOrder: string[];
   bindingsByHash: Map<string, IdentityBindingRecord>;
@@ -80,7 +82,7 @@ export function buildTrustIndexes(records: DurableRecord[]): TrustIndexes {
 
   const bindingsBySubject = new Map<string, string[]>();
   const rotationsBySubject = new Map<string, KeyRotationRecord[]>();
-  const endorsementTypesBySubjectAndEndorser = new Map<string, Map<string, Set<string>>>();
+  const endorsementsBySubjectAndEndorser = new Map<string, Map<string, EndorsementRecord[]>>();
 
   for (const record of records) {
     const recordHash = deriveRecordHash(record);
@@ -101,11 +103,11 @@ export function buildTrustIndexes(records: DurableRecord[]): TrustIndexes {
       known.push(record);
       endorsementsByBinding.set(record.subject_binding_hash, known);
 
-      const byEndorser = endorsementTypesBySubjectAndEndorser.get(record.subject_binding_hash) ?? new Map<string, Set<string>>();
-      const knownTypes = byEndorser.get(record.endorser_binding_hash) ?? new Set<string>();
-      knownTypes.add(record.endorsement_type);
-      byEndorser.set(record.endorser_binding_hash, knownTypes);
-      endorsementTypesBySubjectAndEndorser.set(record.subject_binding_hash, byEndorser);
+      const byEndorser = endorsementsBySubjectAndEndorser.get(record.subject_binding_hash) ?? new Map<string, EndorsementRecord[]>();
+      const knownEndorsements = byEndorser.get(record.endorser_binding_hash) ?? [];
+      knownEndorsements.push(record);
+      byEndorser.set(record.endorser_binding_hash, knownEndorsements);
+      endorsementsBySubjectAndEndorser.set(record.subject_binding_hash, byEndorser);
       continue;
     }
 
@@ -138,23 +140,34 @@ export function buildTrustIndexes(records: DurableRecord[]): TrustIndexes {
     if (!active) {
       const sorted = [...bindingHashes].sort();
       for (const bindingHash of sorted) {
-        conflictsByBinding.set(bindingHash, new Set(sorted.filter((hash) => hash !== bindingHash)));
+        addConflictHashes(conflictsByBinding, bindingHash, sorted);
       }
     }
   }
 
-  for (const [bindingHash, byEndorser] of endorsementTypesBySubjectAndEndorser.entries()) {
-    const hasContradiction = [...byEndorser.values()].some((types) => types.has('binding_valid') && types.has('binding_invalid'));
-    if (!hasContradiction) {
+  for (const [bindingHash, byEndorser] of endorsementsBySubjectAndEndorser.entries()) {
+    const contradictoryEndorsementHashes = new Set<string>();
+
+    for (const endorsements of byEndorser.values()) {
+      const hasBindingValid = endorsements.some((endorsement) => endorsement.endorsement_type === 'binding_valid');
+      const hasBindingInvalid = endorsements.some((endorsement) => endorsement.endorsement_type === 'binding_invalid');
+
+      if (!hasBindingValid || !hasBindingInvalid) {
+        continue;
+      }
+
+      for (const endorsement of endorsements) {
+        contradictoryEndorsementHashes.add(deriveRecordHash(endorsement));
+      }
+    }
+
+    if (contradictoryEndorsementHashes.size === 0) {
       continue;
     }
 
     const endorsements = endorsementsByBinding.get(bindingHash) ?? [];
     conflictingEndorsementsByBinding.set(bindingHash, endorsements);
-
-    const existing = conflictsByBinding.get(bindingHash) ?? new Set<string>();
-    existing.add('conflicting_endorsements');
-    conflictsByBinding.set(bindingHash, existing);
+    addConflictHashes(conflictsByBinding, bindingHash, contradictoryEndorsementHashes);
   }
 
   bindingOrder.sort();

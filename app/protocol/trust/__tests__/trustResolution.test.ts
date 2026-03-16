@@ -202,7 +202,24 @@ describe('resolveTrustStates', () => {
     });
 
     expect(result.trustState).toBe('CONFLICTED');
-    expect(result.evidence.conflicts).toEqual(['conflicting_endorsements']);
+    const valid = endorsement(bindingHash, {
+      endorser_binding_hash: 'endorser-a',
+      endorsement_type: 'binding_valid',
+      confidence_level: 'high',
+      signature: 'sig-a',
+    });
+    const invalid = endorsement(bindingHash, {
+      endorser_binding_hash: 'endorser-a',
+      endorsement_type: 'binding_invalid',
+      confidence_level: 'low',
+      signature: 'sig-a-2',
+    });
+
+    const [resultWithEvidence] = resolveTrustStates({
+      validatedRecords: [binding, valid, invalid],
+    });
+
+    expect(resultWithEvidence.evidence.conflicts).toEqual([deriveRecordHash(invalid), deriveRecordHash(valid)].sort());
   });
 
 
@@ -212,12 +229,16 @@ describe('resolveTrustStates', () => {
 
     const results = resolveTrustStates({ validatedRecords: [a, b] });
 
+    const aHash = deriveBindingHash(a);
+    const bHash = deriveBindingHash(b);
+    const expectedConflicts = [aHash, bHash].sort();
+
     expect(results).toEqual([
       {
-        bindingHash: deriveBindingHash(a),
+        bindingHash: aHash,
         trustState: 'CONFLICTED',
         evidence: {
-          conflicts: [deriveBindingHash(b)],
+          conflicts: expectedConflicts,
           endorsementSummary: {
             positiveScore: 0,
             negativeScore: 0,
@@ -228,10 +249,10 @@ describe('resolveTrustStates', () => {
         },
       },
       {
-        bindingHash: deriveBindingHash(b),
+        bindingHash: bHash,
         trustState: 'CONFLICTED',
         evidence: {
-          conflicts: [deriveBindingHash(a)],
+          conflicts: expectedConflicts,
           endorsementSummary: {
             positiveScore: 0,
             negativeScore: 0,
@@ -375,5 +396,46 @@ describe('resolveTrustStates', () => {
 
     expect(first).toEqual(second);
     expect(first).toEqual(permutation);
+  });
+
+  it('derives CONFLICTED with all binding hashes for ambiguous rotation chains', () => {
+    const bindingA = identityBinding({ key_epoch: 0, subject_identity_public_key: 'pub-key-a' });
+    const bindingB = identityBinding({ key_epoch: 1, subject_identity_public_key: 'pub-key-b', created_at: '2026-03-15T11:00:00.000Z' });
+    const bindingC = identityBinding({ key_epoch: 2, subject_identity_public_key: 'pub-key-c', created_at: '2026-03-15T12:00:00.000Z' });
+    const bindingAHash = deriveBindingHash(bindingA);
+    const bindingBHash = deriveBindingHash(bindingB);
+    const bindingCHash = deriveBindingHash(bindingC);
+
+    const records: DurableRecord[] = [
+      bindingA,
+      bindingB,
+      bindingC,
+      keyRotation(bindingAHash, bindingBHash, { rotation_counter: 1, signatures: { old_key: 'sig-old-1', new_key: 'sig-new-1' } }),
+      keyRotation(bindingAHash, bindingCHash, { rotation_counter: 2, signatures: { old_key: 'sig-old-2', new_key: 'sig-new-2' } }),
+    ];
+
+    const results = resolveTrustStates({ validatedRecords: records });
+    const expectedConflicts = [bindingAHash, bindingBHash, bindingCHash].sort();
+
+    expect(results).toHaveLength(3);
+    for (const result of results) {
+      expect(result.trustState).toBe('CONFLICTED');
+      expect(result.evidence.conflicts).toEqual(expectedConflicts);
+    }
+  });
+
+  it('produces deterministic conflict ordering regardless of input order', () => {
+    const a = identityBinding({ subject_uuid: 'same-uuid', subject_identity_public_key: 'pub-a' });
+    const b = identityBinding({ subject_uuid: 'same-uuid', subject_identity_public_key: 'pub-b' });
+    const c = identityBinding({ subject_uuid: 'same-uuid', subject_identity_public_key: 'pub-c' });
+
+    const ordered = resolveTrustStates({ validatedRecords: [a, b, c] });
+    const permuted = resolveTrustStates({ validatedRecords: [c, a, b] });
+
+    expect(ordered).toEqual(permuted);
+    for (const result of ordered) {
+      expect(result.trustState).toBe('CONFLICTED');
+      expect(result.evidence.conflicts).toEqual([...result.evidence.conflicts ?? []].sort());
+    }
   });
 });
