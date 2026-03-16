@@ -25,12 +25,8 @@ const ENDORSEMENT_WEIGHT_TABLE = {
 const TENTATIVE_SCORE_THRESHOLD = 1;
 const VERIFIED_SCORE_THRESHOLD = 3;
 
-function sortEvidence(hashes: string[] | undefined): string[] | undefined {
-  if (!hashes || hashes.length === 0) {
-    return undefined;
-  }
-
-  return [...hashes].sort();
+function sortEvidence(hashes: Iterable<string>): string[] {
+  return [...new Set(hashes)].sort();
 }
 
 function summarizeEndorsements(endorsements: EndorsementRecord[]): EndorsementSummary {
@@ -98,7 +94,7 @@ export function resolveTrustStates(input: TrustResolutionInput): TrustResolution
       endorsementSummary: {
         ...endorsementSummary,
         endorsementHashes: [...endorsementSummary.endorsementHashes],
-        contributions: [...(endorsementSummary.contributions ?? [])],
+        contributions: [...endorsementSummary.contributions],
       },
     };
 
@@ -119,9 +115,9 @@ export function resolveTrustStates(input: TrustResolutionInput): TrustResolution
       bindingHash,
       trustState,
       evidence: {
-        ...(evidence.endorsements ? { endorsements: evidence.endorsements } : {}),
-        ...(evidence.revocations ? { revocations: evidence.revocations } : {}),
-        ...(evidence.conflicts ? { conflicts: evidence.conflicts } : {}),
+        endorsements: evidence.endorsements,
+        revocations: evidence.revocations,
+        conflicts: evidence.conflicts,
         endorsementSummary: evidence.endorsementSummary,
       },
     };

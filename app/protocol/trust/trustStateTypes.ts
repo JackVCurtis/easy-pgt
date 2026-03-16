@@ -19,16 +19,16 @@ export interface EndorsementSummary {
   negativeScore: number;
   netScore: number;
   endorsementHashes: string[];
-  contributions?: EndorsementContribution[];
+  contributions: EndorsementContribution[];
 }
 
 export interface TrustResolutionResult {
   bindingHash: string;
   trustState: TrustState;
   evidence: {
-    endorsements?: string[];
-    revocations?: string[];
-    conflicts?: string[];
+    endorsements: string[];
+    revocations: string[];
+    conflicts: string[];
     endorsementSummary: EndorsementSummary;
   };
 }

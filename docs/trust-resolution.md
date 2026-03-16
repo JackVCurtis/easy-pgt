@@ -120,7 +120,7 @@ For each binding, the result includes:
     - `endorsementHashes[]`
     - `contributions[]` (per-endorsement deterministic contribution breakdown)
 
-Evidence arrays and contribution lists are sorted for stable deterministic output.
+Evidence arrays (`endorsements`, `revocations`, `conflicts`) and contribution lists are always present, deduplicated, and lexicographically sorted for stable deterministic output.
 
 ## Examples
 

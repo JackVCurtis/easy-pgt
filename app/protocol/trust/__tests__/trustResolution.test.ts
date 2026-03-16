@@ -65,6 +65,9 @@ describe('resolveTrustStates', () => {
         bindingHash: deriveBindingHash(binding),
         trustState: 'CLAIMED',
         evidence: {
+          endorsements: [],
+          revocations: [],
+          conflicts: [],
           endorsementSummary: {
             positiveScore: 0,
             negativeScore: 0,
@@ -88,6 +91,8 @@ describe('resolveTrustStates', () => {
         trustState: 'TENTATIVE',
         evidence: {
           endorsements: [deriveRecordHash(low)],
+          revocations: [],
+          conflicts: [],
           endorsementSummary: {
             positiveScore: 1,
             negativeScore: 0,
@@ -238,6 +243,8 @@ describe('resolveTrustStates', () => {
         bindingHash: aHash,
         trustState: 'CONFLICTED',
         evidence: {
+          endorsements: [],
+          revocations: [],
           conflicts: expectedConflicts,
           endorsementSummary: {
             positiveScore: 0,
@@ -252,6 +259,8 @@ describe('resolveTrustStates', () => {
         bindingHash: bHash,
         trustState: 'CONFLICTED',
         evidence: {
+          endorsements: [],
+          revocations: [],
           conflicts: expectedConflicts,
           endorsementSummary: {
             positiveScore: 0,
