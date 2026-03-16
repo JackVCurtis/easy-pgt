@@ -9,3 +9,5 @@ export * from './validators/handshakeValidator';
 export * from './validators/identityBindingValidator';
 export * from './validators/keyRotationValidator';
 export * from './validators/revocationValidator';
+
+export * from './validateRecordSemantics';

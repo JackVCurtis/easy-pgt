@@ -274,7 +274,7 @@ Required checks:
 * endorsement signatures
 * rotation/revocation signer checks
 
-- [ ] Implement semantic validation rules
+- [x] Implement semantic validation rules
 
 * duplicate record detection
 * conflicting payload detection

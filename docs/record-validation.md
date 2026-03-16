@@ -12,11 +12,15 @@ Validation is intentionally staged to keep behavior deterministic:
    - validates schema version support
    - validates size limits
 2. **Cryptographic validation** (implemented)
-3. **Semantic validation** (future)
+3. **Semantic validation** (implemented)
 
 Structural validation runs first and short-circuits before cryptographic or semantic checks.
 
 Cryptographic validation is exposed via `validateRecord(record, context)` and `validateRecordCryptography(record, context)`.
+
+Semantic validation is exposed via `validateRecordSemantics(record, context)` in `app/protocol/validation/validateRecordSemantics.ts`.
+
+Detailed semantic rules are documented in `docs/validation_semantics.md`.
 
 ## Structural validation entrypoint
 

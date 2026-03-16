@@ -5,14 +5,19 @@ import {
   type CryptographicValidationContext,
   validateRecordCryptography,
 } from './validateRecordCryptography';
+import {
+  type SemanticValidationContext,
+  validateRecordSemantics,
+} from './validateRecordSemantics';
 
 export type RecordValidationResult =
   | { accepted: true }
   | {
       accepted: false;
-      phase: 'structural' | 'cryptographic';
+      phase: 'structural' | 'cryptographic' | 'semantic';
       reason: string;
       field?: string;
+      result?: 'rejected' | 'conflicted';
     };
 
 function validateCryptography(
@@ -32,9 +37,13 @@ function validateCryptography(
   };
 }
 
+export type RecordValidationContext = CryptographicValidationContext & {
+  semantic?: SemanticValidationContext;
+};
+
 export function validateRecord(
   record: unknown,
-  context: CryptographicValidationContext = {}
+  context: RecordValidationContext = {}
 ): RecordValidationResult {
   const structureResult = validateRecordStructure(record);
   if (!structureResult.valid) {
@@ -55,5 +64,21 @@ export function validateRecord(
     };
   }
 
-  return validateCryptography(decoded.record, context);
+
+  const cryptographicResult = validateCryptography(decoded.record, context);
+  if (!cryptographicResult.accepted) {
+    return cryptographicResult;
+  }
+
+  const semanticResult = validateRecordSemantics(decoded.record, context.semantic);
+  if (semanticResult.result !== 'accepted') {
+    return {
+      accepted: false,
+      phase: 'semantic',
+      reason: semanticResult.reason,
+      result: semanticResult.result,
+    };
+  }
+
+  return cryptographicResult;
 }
