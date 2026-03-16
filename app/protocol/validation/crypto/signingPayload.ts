@@ -1,4 +1,4 @@
-const textEncoder = new TextEncoder();
+import { compareBytes, concatBytes, utf8Encode } from '@/app/utils/bytes';
 
 function u32Bytes(value: number): Uint8Array {
   const bytes = new Uint8Array(4);
@@ -12,19 +12,6 @@ function u64Bytes(value: bigint): Uint8Array {
   const view = new DataView(bytes.buffer);
   view.setBigUint64(0, value, false);
   return bytes;
-}
-
-function concat(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const output = new Uint8Array(total);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    output.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return output;
 }
 
 function integerBytes(value: number): Uint8Array {
@@ -61,7 +48,7 @@ function encodeValue(field: string, value: unknown): Uint8Array {
     if (field.endsWith('_at')) {
       return timestampBytes(value);
     }
-    return textEncoder.encode(value);
+    return utf8Encode(value);
   }
 
   if (typeof value === 'number') {
@@ -86,16 +73,16 @@ function encodeValue(field: string, value: unknown): Uint8Array {
 export function canonicalSerialize(record: Record<string, unknown>): Uint8Array {
   const fields = Object.entries(record)
     .filter(([, value]) => value !== undefined && value !== null)
-    .sort(([left], [right]) => Buffer.from(left, 'utf8').compare(Buffer.from(right, 'utf8')));
+    .sort(([left], [right]) => compareBytes(utf8Encode(left), utf8Encode(right)));
 
   const serializedFields = fields.map(([fieldName, value]) => {
-    const fieldNameBytes = textEncoder.encode(fieldName);
+    const fieldNameBytes = utf8Encode(fieldName);
     const valueBytes = encodeValue(fieldName, value);
 
-    return concat([u32Bytes(fieldNameBytes.length), fieldNameBytes, u32Bytes(valueBytes.length), valueBytes]);
+    return concatBytes([u32Bytes(fieldNameBytes.length), fieldNameBytes, u32Bytes(valueBytes.length), valueBytes]);
   });
 
-  return concat(serializedFields);
+  return concatBytes(serializedFields);
 }
 
 function signingPayload(record: Record<string, unknown>): Record<string, unknown> {

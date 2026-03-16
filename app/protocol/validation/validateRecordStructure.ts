@@ -6,6 +6,7 @@ import { validateHandshakeStructure } from './validators/handshakeValidator';
 import { validateIdentityBindingStructure } from './validators/identityBindingValidator';
 import { validateKeyRotationStructure } from './validators/keyRotationValidator';
 import { validateRevocationStructure } from './validators/revocationValidator';
+import { utf8ByteLength } from '@/app/utils/bytes';
 
 function invalid(reason: StructuralValidationResult['reason'], field?: string): StructuralValidationResult {
   return field ? { valid: false, reason, field } : { valid: false, reason };
@@ -20,7 +21,7 @@ function asObject(input: unknown): StructuralRecord | null {
 }
 
 function exceedsRecordSize(record: StructuralRecord): boolean {
-  const size = Buffer.byteLength(JSON.stringify(record), 'utf8');
+  const size = utf8ByteLength(JSON.stringify(record));
   return size > VALIDATION_LIMITS.max_record_size;
 }
 

@@ -1,10 +1,12 @@
 import { createHash } from 'crypto';
 
+import { hexToBytes } from '@/app/utils/bytes';
+
 import type { MerkleLeaf } from '../merkleLeaf';
 import { buildMerkleTree } from '../merkleTree';
 
 function hashPair(left: string, right: string): string {
-  return createHash('sha256').update(Buffer.from(left, 'hex')).update(Buffer.from(right, 'hex')).digest('hex');
+  return createHash('sha256').update(hexToBytes(left)).update(hexToBytes(right)).digest('hex');
 }
 
 describe('buildMerkleTree', () => {

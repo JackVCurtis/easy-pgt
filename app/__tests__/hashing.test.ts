@@ -1,4 +1,5 @@
 import { computeLeafHash, computeRecordHash } from '@/app/crypto/hashing';
+import { hexToBytes } from '@/app/utils/bytes';
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes)
@@ -18,9 +19,7 @@ describe('domain-separated hashing helpers', () => {
   });
 
   it('produces deterministic leaf hashes for identical record hashes', async () => {
-    const recordHash = new Uint8Array(
-      Buffer.from('a1f3ee508469c36640f2206ab1480fa928026bf2052b3861e0650380e2395aa0', 'hex'),
-    );
+    const recordHash = hexToBytes('a1f3ee508469c36640f2206ab1480fa928026bf2052b3861e0650380e2395aa0');
 
     const first = await computeLeafHash(recordHash);
     const second = await computeLeafHash(recordHash);

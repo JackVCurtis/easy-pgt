@@ -1,29 +1,8 @@
 import bs58 from 'bs58';
 
+import { decodeBase64 } from '@/app/utils/bytes';
+
 const ED25519_MULTICODEC_PREFIX = new Uint8Array([0xed, 0x01]);
-
-function normalizeBase64(input: string): string {
-  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = normalized.length % 4;
-
-  if (padding === 0) {
-    return normalized;
-  }
-
-  return `${normalized}${'='.repeat(4 - padding)}`;
-}
-
-function decodeBase64(input: string): Uint8Array | null {
-  try {
-    const decoded = Buffer.from(normalizeBase64(input), 'base64');
-    if (decoded.length === 0 && input.length > 0) {
-      return null;
-    }
-    return new Uint8Array(decoded);
-  } catch {
-    return null;
-  }
-}
 
 function hasPrefix(bytes: Uint8Array, prefix: Uint8Array): boolean {
   if (bytes.length < prefix.length) {

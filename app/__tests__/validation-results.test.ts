@@ -2,9 +2,10 @@ import nacl from 'tweetnacl';
 
 import { validateRecord } from '@/app/protocol/validation/validateRecord';
 import { deriveSigningPayloadBytes } from '@/app/protocol/validation/crypto/signingPayload';
+import { encodeBase64 } from '@/app/utils/bytes';
 
 function toBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64');
+  return encodeBase64(bytes);
 }
 
 describe('auditable validation results', () => {
