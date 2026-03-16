@@ -1,6 +1,7 @@
 import nacl from 'tweetnacl';
 
 import type { NfcBootstrapV1 } from './nfcBootstrap.types';
+import type { QrBootstrapV1 } from './qrBootstrap.types';
 import { decodeBase64, encodeBase64 } from './encoding';
 
 export interface PendingBootstrapSession {
@@ -34,7 +35,7 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
-export function createPendingBootstrapSession(payload: NfcBootstrapV1): PendingBootstrapSession {
+export function createPendingBootstrapSession(payload: QrBootstrapV1 | NfcBootstrapV1): PendingBootstrapSession {
   return {
     sessionUuid: payload.session_uuid,
     peerIdentityBindingHash: payload.identity_binding_hash,
