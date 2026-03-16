@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
 import {
   createPendingBootstrapSession,
@@ -9,6 +9,7 @@ import {
   validateNfcBootstrap,
   validateSessionConfirmation,
   type NfcBootstrapV1,
+  type PendingBootstrapSession,
   type SignableNfcBootstrapV1,
   encodeBase64,
 } from '@/app/protocol/transport';
@@ -28,6 +29,13 @@ type ProximityRole = 'writer' | 'reader';
 interface UseProximityBootstrapPorts {
   nfc?: ProximityNfcPort;
   ble?: ProximityBlePort;
+}
+
+interface ProximityDiagnosticEvent {
+  source: 'nfc' | 'ble' | 'session' | 'system';
+  action: string;
+  detail: string;
+  at: string;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -61,10 +69,16 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
   const [getLocalKeys] = useState(() => createProximityLocalKeysProvider());
   const [bootstrapPayload, setBootstrapPayload] = useState<NfcBootstrapV1 | null>(null);
   const [diagnostic, setDiagnostic] = useState<string>('');
+  const [diagnosticEvents, setDiagnosticEvents] = useState<ProximityDiagnosticEvent[]>([]);
   const [localSignerPublicKeyBase64, setLocalSignerPublicKeyBase64] = useState('');
   const [nfcPort] = useState(() => ports.nfc ?? createNfcAdapter());
   const [blePort] = useState(() => ports.ble ?? createBleAdapter());
+  const pendingSessionRef = useRef<PendingBootstrapSession | null>(null);
   const connectedDeviceIdRef = useRef<string | undefined>(undefined);
+
+  const pushDiagnosticEvent = (event: Omit<ProximityDiagnosticEvent, 'at'>) => {
+    setDiagnosticEvents((previous) => [...previous, { ...event, at: new Date().toISOString() }]);
+  };
 
   const ensureLocalKeys = () => {
     const localKeys = getLocalKeys();
@@ -76,19 +90,21 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
     return localKeys;
   };
 
-  const failWithMappedError = (error: unknown, prefix: string) => {
+  const failWithMappedError = (error: unknown, prefix: string, source: ProximityDiagnosticEvent['source']) => {
     const reason = mapAsyncRuntimeError(error);
     setDiagnostic(`${prefix} (${reason}). Please retry.`);
+    pushDiagnosticEvent({ source, action: prefix, detail: reason });
     dispatch({ type: 'failed', reason });
 
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       console.warn(`${prefix}:`, error);
     }
   };
 
   const prepareWriterPayload = async (identityBindingHash: string, bluetoothServiceUuid: string) => {
     dispatch({ type: 'set_status', status: 'nfc_preparing' });
+    pushDiagnosticEvent({ source: 'nfc', action: 'write_start', detail: 'Preparing signed bootstrap payload.' });
+
     try {
       const signable: SignableNfcBootstrapV1 = {
         version: 1,
@@ -102,33 +118,56 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       const signed = signNfcBootstrap(signable, ensureLocalKeys().signer.secretKey);
       await nfcPort.writeBootstrapPayload(signed);
       setBootstrapPayload(signed);
-      setDiagnostic('Bootstrap payload generated and handed off over NFC.');
+      setDiagnostic('Bootstrap payload generated and written over NFC.');
+      pushDiagnosticEvent({ source: 'nfc', action: 'write_success', detail: 'Payload written to NFC target.' });
       dispatch({ type: 'set_status', status: 'nfc_ready' });
     } catch (error) {
       setBootstrapPayload(null);
-      failWithMappedError(error, 'Bootstrap payload generation failed');
+      failWithMappedError(error, 'Bootstrap payload write failed', 'nfc');
     }
   };
 
-  const readerReceivePayload = async (payload: unknown, expectedSignerPublicKey: string) => {
+  const readBootstrapViaNfc = async (expectedSignerPublicKey: string) => {
     dispatch({ type: 'set_status', status: 'nfc_received' });
+    pushDiagnosticEvent({ source: 'nfc', action: 'read_start', detail: 'Waiting for NFC bootstrap payload.' });
 
     try {
-      const receivedPayload = payload ?? (await nfcPort.readBootstrapPayload()) ?? {};
+      const receivedPayload = (await nfcPort.readBootstrapPayload()) ?? {};
       const validation = validateNfcBootstrap(receivedPayload, expectedSignerPublicKey);
       if (!validation.valid) {
-        setDiagnostic(`Bootstrap validation failed: ${validation.reason}:${validation.field}`);
-        dispatch({ type: 'failed', reason: `${validation.reason}:${validation.field}` });
+        const reason = `${validation.reason}:${validation.field}`;
+        setDiagnostic(`Bootstrap validation failed: ${reason}`);
+        pushDiagnosticEvent({ source: 'nfc', action: 'read_invalid', detail: reason });
+        dispatch({ type: 'failed', reason });
         return;
       }
 
       const pending = createPendingBootstrapSession(receivedPayload as NfcBootstrapV1);
+      pendingSessionRef.current = pending;
+      setDiagnostic('Bootstrap payload validated. Ready for BLE discovery/connect.');
+      pushDiagnosticEvent({ source: 'nfc', action: 'read_valid', detail: 'Signed payload validated and staged.' });
       dispatch({ type: 'set_status', status: 'bootstrap_validated' });
-      dispatch({ type: 'set_status', status: 'ble_scanning' });
+    } catch (error) {
+      failWithMappedError(error, 'Bootstrap payload read failed', 'nfc');
+    }
+  };
 
+  const startBleDiscoveryConnect = async () => {
+    const pending = pendingSessionRef.current;
+    if (!pending) {
+      setDiagnostic('Cannot start BLE flow before NFC bootstrap validation.');
+      dispatch({ type: 'failed', reason: 'BOOTSTRAP_NOT_VALIDATED' });
+      return;
+    }
+
+    dispatch({ type: 'set_status', status: 'ble_scanning' });
+    pushDiagnosticEvent({ source: 'ble', action: 'scan_start', detail: 'Scanning for matching BLE service UUID.' });
+
+    try {
       const discoveredDevice = await blePort.scanForService(pending.bluetoothServiceUuid, 10_000);
       if (!discoveredDevice) {
-        setDiagnostic('BLE discovery mismatch: SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND');
+        setDiagnostic('BLE discovery failed: SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND');
+        pushDiagnosticEvent({ source: 'ble', action: 'scan_timeout', detail: 'No matching device discovered before timeout.' });
         dispatch({ type: 'failed', reason: 'SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND' });
         return;
       }
@@ -136,11 +175,13 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       const discovery = validateBleDiscoveryMatch(pending, pending.bluetoothServiceUuid);
       if (!discovery.valid) {
         setDiagnostic(`BLE discovery mismatch: ${discovery.reason}`);
+        pushDiagnosticEvent({ source: 'ble', action: 'scan_mismatch', detail: discovery.reason });
         dispatch({ type: 'failed', reason: discovery.reason });
         return;
       }
 
       dispatch({ type: 'set_status', status: 'ble_connecting' });
+      pushDiagnosticEvent({ source: 'ble', action: 'connect_start', detail: `Connecting to device ${discoveredDevice.id}.` });
       const connectedDevice = await blePort.connect(discoveredDevice.id);
       connectedDeviceIdRef.current = connectedDevice.id;
       dispatch({ type: 'set_status', status: 'ble_connected' });
@@ -149,6 +190,7 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       const context = deriveSessionContext(ensureLocalKeys().ephemeral.secretKey, pending);
       if (!context.valid) {
         setDiagnostic(`Session context failure: ${context.reason}`);
+        pushDiagnosticEvent({ source: 'session', action: 'context_invalid', detail: context.reason });
         dispatch({ type: 'failed', reason: context.reason });
         return;
       }
@@ -165,28 +207,33 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
 
       if (!confirmation.valid) {
         setDiagnostic(`Session confirmation failed: ${confirmation.reason}`);
+        pushDiagnosticEvent({ source: 'session', action: 'confirmation_invalid', detail: confirmation.reason });
         dispatch({ type: 'failed', reason: confirmation.reason });
         return;
       }
 
       setDiagnostic('Session authenticated and bound to NFC bootstrap data.');
+      pushDiagnosticEvent({ source: 'session', action: 'authenticated', detail: `Device ${connectedDevice.id} authenticated.` });
       dispatch({ type: 'set_status', status: 'session_authenticated' });
     } catch (error) {
-      failWithMappedError(error, 'Reader flow failed');
+      failWithMappedError(error, 'BLE connect/auth flow failed', 'ble');
     }
   };
 
-  const releaseSessions = async () => {
+  const releaseSessions = useCallback(async () => {
     await nfcPort.cancel();
     await blePort.stopAdvertising();
     await blePort.disconnect(connectedDeviceIdRef.current);
     connectedDeviceIdRef.current = undefined;
-  };
+    pendingSessionRef.current = null;
+    pushDiagnosticEvent({ source: 'system', action: 'session_reset', detail: 'Cancelled NFC/BLE in-flight operations.' });
+  }, [blePort, nfcPort]);
 
   const reset = async () => {
     await releaseSessions();
     setBootstrapPayload(null);
     setDiagnostic('');
+    setDiagnosticEvents([]);
     dispatch({ type: 'reset' });
   };
 
@@ -199,16 +246,18 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
           blePort.cleanup().catch(() => undefined);
         });
     };
-  }, [blePort, nfcPort]);
+  }, [releaseSessions, blePort, nfcPort]);
 
   return {
     state,
     roleOptions: ['writer', 'reader'] as ProximityRole[],
     bootstrapPayload,
     diagnostic,
+    diagnosticEvents,
     localSignerPublicKeyBase64,
     prepareWriterPayload,
-    readerReceivePayload,
+    readBootstrapViaNfc,
+    startBleDiscoveryConnect,
     reset,
   };
 }

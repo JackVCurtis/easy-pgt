@@ -124,7 +124,8 @@ describe('useProximityBootstrap', () => {
     nfc.readBootstrapPayload.mockResolvedValueOnce(payload);
 
     await act(async () => {
-      await result.current.readerReceivePayload(undefined, result.current.localSignerPublicKeyBase64);
+      await result.current.readBootstrapViaNfc(result.current.localSignerPublicKeyBase64);
+      await result.current.startBleDiscoveryConnect();
     });
 
     expect(nfc.readBootstrapPayload).toHaveBeenCalled();
@@ -147,7 +148,8 @@ describe('useProximityBootstrap', () => {
     ble.scanForService.mockRejectedValueOnce(new Error('scan timeout waiting for device'));
 
     await act(async () => {
-      await result.current.readerReceivePayload(undefined, result.current.localSignerPublicKeyBase64);
+      await result.current.readBootstrapViaNfc(result.current.localSignerPublicKeyBase64);
+      await result.current.startBleDiscoveryConnect();
     });
 
     expect(result.current.state.status).toBe('failed');
