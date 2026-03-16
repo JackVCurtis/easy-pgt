@@ -37,7 +37,9 @@ export function ProximityBootstrapPanel() {
         style={[styles.input, { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: inputTextColor }]}
       />
 
-      <AppButton label="Writer: Generate bootstrap payload" onPress={() => prepareWriterPayload(identityBindingHash, serviceUuid)} />
+      <AppButton label="Writer: Generate bootstrap payload" onPress={() => {
+        void prepareWriterPayload(identityBindingHash, serviceUuid);
+      }} />
       {bootstrapPayload ? <ThemedText selectable>{JSON.stringify(bootstrapPayload)}</ThemedText> : null}
       <ThemedText selectable>Expected signer public key: {localSignerPublicKeyBase64}</ThemedText>
 
@@ -52,13 +54,13 @@ export function ProximityBootstrapPanel() {
         onPress={() => {
           try {
             const parsed = JSON.parse(payloadInput);
-            readerReceivePayload(parsed, localSignerPublicKeyBase64);
+            void readerReceivePayload(parsed, localSignerPublicKeyBase64);
           } catch {
-            readerReceivePayload({}, localSignerPublicKeyBase64);
+            void readerReceivePayload(undefined, localSignerPublicKeyBase64);
           }
         }}
       />
-      <AppButton label="Reset developer flow" onPress={reset} />
+      <AppButton label="Reset developer flow" onPress={() => { void reset(); }} />
     </AppCard>
   );
 }
