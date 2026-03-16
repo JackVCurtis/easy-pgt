@@ -326,25 +326,21 @@ Add conformance tests for:
 
 ---
 
-## 5) BLE synchronization protocol
+## 5) Proximity bootstrap and BLE synchronization
 
-* [ ] Implement authenticated encrypted channel using NFC-bootstrapped ephemeral keys
-* [ ] Implement synchronization phases
+This stage implements the proximity session bootstrap and Merkle log synchronization using the following libraries:
 
-1. root comparison
-2. subtree reconciliation
-3. record transfer
-4. validation
-5. commit
+- **NFC:** `react-native-nfc-manager`
+- **BLE:** `react-native-ble-plx`
 
-* [ ] Ensure invalid records never commit
-* [ ] Implement resumable sync checkpoints
+NFC is used only to bootstrap a session and prove physical proximity.  
+BLE carries the encrypted synchronization traffic.
 
 ---
 
-## 6) NFC bootstrap
+### Bootstrap payload definition
 
-Define and version:
+* [ ] Define and version the `NfcBootstrap` payload used to initiate a synchronization session:
 
 ```
 NfcBootstrap {
@@ -357,9 +353,209 @@ NfcBootstrap {
 }
 ```
 
-Add strict payload validation and parser hardening.
+
+The payload must be serialized deterministically and validated before use.
 
 ---
+
+### NFC bootstrap implementation (`react-native-nfc-manager`)
+
+* [ ] Implement NFC bootstrap exchange using `react-native-nfc-manager`.
+
+Bootstrap exchange must transmit:
+
+- `identity_binding_hash`
+- `ephemeral_public_key`
+- `session_uuid`
+- `bluetooth_service_uuid`
+- `nonce`
+- `signature`
+
+Responsibilities:
+
+* read NDEF payload from peer device
+* parse bootstrap payload
+* verify payload signature
+* bind bootstrap payload to a pending BLE session
+
+---
+
+### Bootstrap payload validation and hardening
+
+* [ ] Implement strict bootstrap payload validation.
+
+Validation must include:
+
+* explicit payload version requirement
+* field presence and format validation
+* UUID validation for `session_uuid`
+* public key format validation
+* nonce length validation
+* signature verification
+
+Reject payloads when:
+
+* fields are missing
+* version unsupported
+* signature invalid
+* payload exceeds size limits
+* parser errors occur
+
+Bootstrap parsing must **fail closed**.
+
+---
+
+### BLE discovery and connection (`react-native-ble-plx`)
+
+* [ ] Implement BLE discovery and connection using `react-native-ble-plx`.
+
+Responsibilities:
+
+* advertise BLE service using `bluetooth_service_uuid`
+* scan for the service UUID received from NFC bootstrap
+* connect to discovered peer device
+* verify the connection matches the active bootstrap session
+
+BLE sessions must be rejected when:
+
+* service UUID does not match bootstrap
+* session UUID mismatch occurs
+
+---
+
+### Authenticated encrypted session establishment
+
+* [ ] Implement authenticated encrypted channel using NFC-exchanged ephemeral keys.
+
+Steps:
+
+1. derive shared secret using exchanged ephemeral keys
+2. bind derived key to `session_uuid`
+3. establish encryption context for all sync messages
+4. authenticate peer identity binding hash
+
+No synchronization data may flow before channel authentication completes.
+
+---
+
+### BLE synchronization state machine
+
+* [ ] Implement the synchronization state machine.
+
+Phases:
+
+1. **root comparison**
+2. **subtree reconciliation**
+3. **record transfer**
+4. **validation**
+5. **commit**
+
+State transitions must be deterministic.
+
+---
+
+### Root comparison
+
+* [ ] Exchange Merkle roots between peers  
+* [ ] Detect divergence between logs  
+* [ ] Transition to subtree reconciliation when roots differ
+
+---
+
+### Subtree reconciliation
+
+* [ ] Request subtree hashes  
+* [ ] Identify missing leaves  
+* [ ] Determine record transfer set  
+
+Subtree comparisons must be deterministic across devices.
+
+---
+
+### Record transfer
+
+* [ ] Transfer missing records in bounded batches  
+* [ ] Support flow control and retransmission  
+* [ ] Deduplicate records using record hash index
+
+---
+
+### Record validation boundary
+
+* [ ] Validate every received record before commit.
+
+Validation must execute:
+
+1. structural validation  
+2. cryptographic validation  
+3. semantic validation  
+
+Only records with:
+
+```
+status = accepted
+```
+
+may proceed to commit.
+
+---
+
+### Commit phase
+
+* [ ] Append accepted records to the local Merkle log  
+* [ ] Reject invalid records without committing them  
+* [ ] Maintain append-only log semantics
+
+Invalid or rejected records must never modify local state.
+
+---
+
+### Resumable synchronization
+
+* [ ] Implement resumable sync checkpoints.
+
+Persist:
+
+```
+session_uuid
+peer_binding_hash
+current_phase
+transfer_cursor
+last_acknowledged_record
+```
+
+
+Allow interrupted sessions to resume without:
+
+* duplicate record commits
+* inconsistent Merkle states
+
+---
+
+### Conformance and failure testing
+
+* [ ] Add tests covering:
+
+Bootstrap:
+
+* valid bootstrap exchange
+* malformed payload rejection
+* invalid signature rejection
+* unsupported version rejection
+
+BLE session:
+
+* encrypted channel establishment
+* root comparison correctness
+* subtree reconciliation correctness
+* record transfer batching
+
+Failure cases:
+
+* interrupted sync
+* checkpoint resume
+* invalid record rejection
+* replay protection
 
 ## 7) Cryptographic layer
 
