@@ -77,7 +77,8 @@ describe('useProximityBootstrap prepareWriterPayload error handling', () => {
       '[useProximityBootstrap] prepareWriterPayload failed',
       expect.any(Error),
     );
-
+  });
+  it('successfully prepares a valid payload', () => {
     expect(() => {
       act(() => {
         result.current.prepareWriterPayload('hash_abc123', '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
