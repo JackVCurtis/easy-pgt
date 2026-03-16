@@ -156,6 +156,7 @@ docs/
   schema-versioning.md
   nfc-bootstrap.md
   manual-nfc-ble-session-test.md
+  crypto-layer.md
 ```
 
 Recommended reading order:
@@ -204,25 +205,21 @@ PGT uses a **pure JavaScript crypto stack** compatible with Expo.
 | Hashing                     | Expo Crypto      |
 | Secure key storage          | Expo SecureStore |
 
-### Identity key generation
+### Protocol crypto wrapper
 
-```
-const keypair = nacl.sign.keyPair()
-```
-
-### Signing
-
-```
-signature = nacl.sign.detached(message, secretKey)
-```
-
-### Verification
-
-```
-nacl.sign.detached.verify(message, signature, publicKey)
+```ts
+import {
+  generateIdentityKeypair,
+  signRecord,
+  verifySignature,
+  generateEphemeralKeypair,
+  deriveSharedSecret,
+} from '@/app/protocol/crypto/crypto';
 ```
 
-Private keys are stored locally using **SecureStore**, backed by the platform keystore where available.
+The wrapper signs canonical durable-record payload bytes (not JSON text), validates key/signature encodings fail-closed, and uses SecureStore-backed persistence for long-term identity keys.
+
+See `docs/crypto-layer.md` for API details and signing/elision rules.
 
 ---
 
