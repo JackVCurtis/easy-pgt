@@ -1,5 +1,4 @@
 import { probeSecureStoreReadiness } from '@/app/onboarding/secureStoreReadiness';
-import { setSecureStorageMode } from '@/app/security/secureStorage';
 import SettingsStorage from 'expo-settings-storage';
 
 jest.mock('expo-settings-storage', () => ({
@@ -8,13 +7,7 @@ jest.mock('expo-settings-storage', () => ({
   deleteItem: jest.fn(),
 }));
 
-jest.mock('@/app/security/secureStorage', () => ({
-  setSecureStorageMode: jest.fn(async () => undefined),
-}));
-
 describe('probeSecureStoreReadiness', () => {
-  const mockSetStorageMode = jest.mocked(setSecureStorageMode);
-
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(SettingsStorage.setItem).mockResolvedValue(undefined);
@@ -22,18 +15,16 @@ describe('probeSecureStoreReadiness', () => {
     jest.mocked(SettingsStorage.deleteItem).mockResolvedValue(undefined);
   });
 
-  it('uses authenticated secure-store mode when Android supports biometric auth', async () => {
+  it('returns granted when secure settings storage probe succeeds', async () => {
     await expect(probeSecureStoreReadiness()).resolves.toEqual({ status: 'granted' });
-    expect(mockSetStorageMode).toHaveBeenCalledWith('authenticated-secure-store');
   });
 
-  it('returns granted with fallback guidance when authenticated Android storage is unavailable', async () => {
-    await expect(probeSecureStoreReadiness()).resolves.toEqual({
-      status: 'granted',
-      errorMessage:
-        'Secure lock screen / biometrics are not configured. Continuing with secure storage without OS authentication prompts.',
-    });
+  it('returns denied when authentication is canceled by OS prompt', async () => {
+    jest.mocked(SettingsStorage.setItem).mockRejectedValueOnce(new Error('Authentication canceled'));
 
-    expect(mockSetStorageMode).toHaveBeenCalledWith('secure-store-without-auth');
+    await expect(probeSecureStoreReadiness()).resolves.toEqual({
+      status: 'denied',
+      errorMessage: expect.stringContaining('permission was denied by the OS'),
+    });
   });
 });

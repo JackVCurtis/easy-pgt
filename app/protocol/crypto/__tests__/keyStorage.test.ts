@@ -64,7 +64,7 @@ describe('secure key storage', () => {
     );
   });
 
-  it('uses authenticated secure-store options for identity keypair reads and writes', async () => {
+  it('uses settings storage adapter calls for identity keypair reads and writes', async () => {
     const getItemAsync = jest.mocked(SettingsStorage.getItem);
     const setItemAsync = jest.mocked(SettingsStorage.setItem);
 
@@ -76,14 +76,8 @@ describe('secure key storage', () => {
     await adapter.getItem('pgt.identity.keypair.v1');
     await adapter.setItem('pgt.identity.keypair.v1', 'payload');
 
-    expect(getItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1', {
-      requireAuthentication: true,
-      authenticationPrompt: 'Unlock your device to access protected Comrades data.',
-    });
-    expect(setItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1', 'payload', {
-      requireAuthentication: true,
-      authenticationPrompt: 'Unlock your device to access protected Comrades data.',
-    });
+    expect(getItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1');
+    expect(setItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1', 'payload');
   });
 
 });

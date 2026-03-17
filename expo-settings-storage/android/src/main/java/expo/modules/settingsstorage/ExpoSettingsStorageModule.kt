@@ -6,6 +6,7 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -55,7 +56,17 @@ class ExpoSettingsStorageModule : Module() {
 
         val activity = appContext.currentActivity
         if (activity == null) {
-          promise.reject("ERR_NO_ACTIVITY", "No foreground activity available")
+          promise.reject("ERR_NO_ACTIVITY", "No foreground activity available", null)
+          return@AsyncFunction
+        }
+
+        val fragmentActivity = activity as? FragmentActivity
+        if (fragmentActivity == null) {
+          promise.reject(
+            "ERR_ACTIVITY_TYPE",
+            "Current activity does not support biometric prompts",
+            null
+          )
           return@AsyncFunction
         }
 
@@ -64,13 +75,13 @@ class ExpoSettingsStorageModule : Module() {
         val secretKey = getOrCreateSecretKey()
         val spec = GCMParameterSpec(TAG_SIZE_BITS, iv)
 
-        val executor = ContextCompat.getMainExecutor(activity)
+        val executor = ContextCompat.getMainExecutor(fragmentActivity)
         val prompt = BiometricPrompt(
-          activity,
+          fragmentActivity,
           executor,
           object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-              promise.reject("ERR_AUTH", errString.toString())
+              promise.reject("ERR_AUTH", errString.toString(), null)
             }
 
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
