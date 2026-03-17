@@ -568,20 +568,53 @@ Failure cases:
 
 ## 7) Cryptographic layer
 
-* [ ] Implement `crypto.ts` wrapper around TweetNaCl primitives
-* [ ] Define stable API:
+### Completed in current codebase
+
+* [x] Protocol crypto wrapper implemented in `app/protocol/crypto/crypto.ts` using TweetNaCl.
+* [x] Stable API exported from `app/protocol/crypto/crypto.ts`:
 
 ```
-generateIdentityKeypair()
-signRecord()
-verifySignature()
-generateEphemeralKeypair()
-deriveSharedSecret()
+generateIdentityKeypair(options?: { seed?: Uint8Array })
+generateEphemeralKeypair(options?: { secretKey?: Uint8Array })
+signRecord(record, signerSecretKey)
+verifySignature(recordOrBytes, signature, signerPublicKey)
+deriveSharedSecret(localSecretKey, peerPublicKey)
+decodeSignatureStrict(signature)
 ```
 
-* [ ] Implement secure key storage abstraction
-* [ ] Ensure deterministic signature encoding
-* [ ] Add cross-device deterministic crypto tests
+* [x] Secure key storage abstraction implemented in `app/protocol/crypto/keyStorage.ts`:
+
+```
+createSecureKeyStorage(adapter?, storageKey?)
+createExpoSecureStoreAdapter()
+createInMemorySecureStoreAdapter(initialData?)
+```
+
+* [x] Cryptographic validation path implemented (`app/protocol/validation/validateRecordCryptography.ts`) and wired to canonical signing payload bytes from `app/protocol/validation/crypto/signingPayload.ts`.
+
+### Remaining for production readiness
+
+* [ ] Freeze and document API contract at package boundary:
+  * single supported import/export path (re-export index) for crypto + key storage,
+  * semver policy for function signatures/return shapes,
+  * explicit error taxonomy for decode/length/verification failures.
+* [ ] Enforce fail-closed encoding/length behavior end-to-end:
+  * any invalid base64, unexpected key length, or unexpected signature length MUST produce a hard failure (`false`/typed error),
+  * no coercion, truncation, auto-padding, or fallback decode paths,
+  * malformed stored key material MUST never be returned as usable key state.
+* [ ] Lock canonical signing payload requirements:
+  * all record signatures MUST be over canonical serialized payload bytes only,
+  * signature-bearing fields (`signature`, `self_signature`, `signatures`) MUST be excluded from preimage,
+  * cross-platform implementations MUST reproduce byte-identical preimages for the same record.
+* [ ] Add required test classes for release gates:
+  * deterministic vectors: fixed seeds/secret keys => exact expected public keys/signatures/shared secrets,
+  * malformed input tests: corrupt base64, wrong lengths, unknown fields/types, tampered payloads,
+  * interop vectors: fixtures verified across at least one non-JS implementation and CI-checked for parity.
+* [ ] Define key lifecycle requirements and verify behavior:
+  * create/load/delete identity keypair semantics must be idempotent and atomic,
+  * rotation must specify old/new key proof rules and state transition order,
+  * delete/rotate flows must guarantee no stale key reuse after completion,
+  * recovery/migration behavior must be explicit for storage corruption and schema upgrades.
 
 ---
 
