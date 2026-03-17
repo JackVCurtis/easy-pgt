@@ -72,12 +72,12 @@ function buildTimeline(steps: Record<OnboardingPermissionStepKey, { status: keyo
     },
     {
       key: 'generate_identity_keypair',
-      label: 'Generating identity keypair',
+      label: 'Initializing app data encryption key',
       status: toTimelineStatus(steps.initializing_keys.status),
     },
     {
       key: 'verify_stored_keypair',
-      label: 'Verifying stored keypair',
+      label: 'Verifying encryption key access',
       status: toTimelineStatus(steps.initializing_keys.status),
     },
   ];
@@ -115,7 +115,7 @@ export default function OnboardingScreen() {
     <View style={[styles.container, { backgroundColor: palette.background }]}>
       <Text style={[styles.title, { color: palette.text }]}>Welcome to Comrades</Text>
       <Text style={[styles.body, { color: palette.textMuted }]}>
-        Confirm required permissions and secure key initialization before starting handshake flows.
+        Confirm required permissions and secure encryption-key initialization before starting handshake flows.
       </Text>
       <Text style={[styles.progress, { color: palette.text }]}>Permissions ready: {grantedCount}/{totalCount}</Text>
       <Text style={[styles.progress, { color: palette.text }]}>Security status: {terminalState}</Text>

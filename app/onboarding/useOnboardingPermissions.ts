@@ -9,8 +9,7 @@ import {
   type PermissionCheckResult,
 } from '@/app/onboarding/bluetoothPermission';
 import { mapIdentityInitializationFailure } from '@/app/onboarding/identityInitialization';
-import { probeSecureStoreReadiness } from '@/app/onboarding/secureStoreReadiness';
-import { getOrCreateIdentityKeypair } from '@/app/protocol/crypto/identityKeyManager';
+import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
 
 export type OnboardingPermissionStepKey = 'camera' | 'bluetooth' | 'secureStore' | 'initializing_keys';
 export type OnboardingTerminalState =
@@ -130,9 +129,9 @@ function createBleReadinessChecker(): (() => Promise<PermissionCheckResult>) {
   };
 }
 
-async function initializeIdentityKeypair(): Promise<PermissionCheckResult> {
+async function initializeAppDataEncryptionKey(): Promise<PermissionCheckResult> {
   try {
-    await getOrCreateIdentityKeypair();
+    await getOrCreateAppDataEncryptionKey();
     return { status: 'granted' };
   } catch (error) {
     return mapIdentityInitializationFailure(error);
@@ -175,12 +174,12 @@ export function useOnboardingPermissions(ports: UseOnboardingPermissionsPorts = 
   );
 
   const checkSecureStoreReadiness = useMemo(
-    () => ports.secureStore?.checkReadiness ?? probeSecureStoreReadiness,
+    () => ports.secureStore?.checkReadiness ?? (async (): Promise<PermissionCheckResult> => ({ status: 'granted' })),
     [ports.secureStore?.checkReadiness]
   );
 
   const runIdentityInitialization = useMemo(
-    () => ports.identity?.initializeKeypair ?? initializeIdentityKeypair,
+    () => ports.identity?.initializeKeypair ?? initializeAppDataEncryptionKey,
     [ports.identity?.initializeKeypair]
   );
 
