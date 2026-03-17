@@ -62,8 +62,8 @@ describe('OnboardingScreen', () => {
     expect(getByText('Permissions ready: 2/4')).toBeTruthy();
     expect(getByText('Requesting permissions: Completed')).toBeTruthy();
     expect(getByText('Preparing secure storage: Completed')).toBeTruthy();
-    expect(getByText('Generating identity keypair: Failed')).toBeTruthy();
-    expect(getByText('Verifying stored keypair: Failed')).toBeTruthy();
+    expect(getByText('Initializing app data encryption key: Failed')).toBeTruthy();
+    expect(getByText('Verifying encryption key access: Failed')).toBeTruthy();
     expect(getByText('Stored keypair appears corrupted. Retry initialization.')).toBeTruthy();
 
     fireEvent.press(getByRole('button', { name: 'Retry initialization' }));
@@ -101,8 +101,8 @@ describe('OnboardingScreen', () => {
 
     const { getByText } = render(<OnboardingScreen />);
 
-    expect(getByText(`Generating identity keypair: ${expected}`)).toBeTruthy();
-    expect(getByText(`Verifying stored keypair: ${expected}`)).toBeTruthy();
+    expect(getByText(`Initializing app data encryption key: ${expected}`)).toBeTruthy();
+    expect(getByText(`Verifying encryption key access: ${expected}`)).toBeTruthy();
   });
 
 

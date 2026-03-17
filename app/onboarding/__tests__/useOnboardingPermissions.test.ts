@@ -1,13 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { useOnboardingPermissions } from '@/app/onboarding/useOnboardingPermissions';
-import { getOrCreateIdentityKeypair } from '@/app/protocol/crypto/identityKeyManager';
+import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
 
-jest.mock('@/app/protocol/crypto/identityKeyManager', () => ({
-  getOrCreateIdentityKeypair: jest.fn(),
+jest.mock('@/app/protocol/crypto/appDataEncryptionKey', () => ({
+  getOrCreateAppDataEncryptionKey: jest.fn(),
 }));
 
-const mockGetOrCreateIdentityKeypair = jest.mocked(getOrCreateIdentityKeypair);
+const mockGetOrCreateAppDataEncryptionKey = jest.mocked(getOrCreateAppDataEncryptionKey);
 
 function createCameraResult(granted: boolean, canAskAgain = true) {
   return {
@@ -19,10 +19,7 @@ function createCameraResult(granted: boolean, canAskAgain = true) {
 describe('useOnboardingPermissions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetOrCreateIdentityKeypair.mockResolvedValue({
-      publicKey: 'mock-public',
-      privateKey: 'mock-private',
-    } as never);
+    mockGetOrCreateAppDataEncryptionKey.mockResolvedValue('mock-app-data-key');
   });
 
   it('runs camera, bluetooth, and secure store checks in order and reports progress', async () => {
@@ -251,7 +248,7 @@ describe('useOnboardingPermissions', () => {
       expect(result.current.steps.initializing_keys.status).toBe('granted');
     });
 
-    expect(mockGetOrCreateIdentityKeypair).toHaveBeenCalledTimes(1);
+    expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(1);
     expect(result.current.terminalState).toBe('ready_to_continue');
     expect(result.current.isReady).toBe(true);
   });
@@ -259,7 +256,7 @@ describe('useOnboardingPermissions', () => {
 
 
   it('surfaces unlock guidance when identity init fails due to authentication state', async () => {
-    mockGetOrCreateIdentityKeypair.mockRejectedValueOnce(new Error('Authentication required: device is locked'));
+    mockGetOrCreateAppDataEncryptionKey.mockRejectedValueOnce(new Error('Authentication required: device is locked'));
 
     const { result } = renderHook(() =>
       useOnboardingPermissions({
@@ -287,12 +284,9 @@ describe('useOnboardingPermissions', () => {
   });
 
   it('maps key initialization failure then recovers on retry', async () => {
-    mockGetOrCreateIdentityKeypair
+    mockGetOrCreateAppDataEncryptionKey
       .mockRejectedValueOnce(new Error('Secure storage unavailable'))
-      .mockResolvedValueOnce({
-        publicKey: 'mock-public',
-        privateKey: 'mock-private',
-      } as never);
+      .mockResolvedValueOnce('mock-app-data-key');
 
     const { result } = renderHook(() =>
       useOnboardingPermissions({
@@ -322,11 +316,11 @@ describe('useOnboardingPermissions', () => {
 
     expect(result.current.steps.initializing_keys.status).toBe('granted');
     expect(result.current.terminalState).toBe('ready_to_continue');
-    expect(mockGetOrCreateIdentityKeypair).toHaveBeenCalledTimes(2);
+    expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(2);
   });
 
   it('surfaces recovery flow when authenticated secure-store key is invalidated', async () => {
-    mockGetOrCreateIdentityKeypair.mockRejectedValueOnce(
+    mockGetOrCreateAppDataEncryptionKey.mockRejectedValueOnce(
       new Error('KEY_STORAGE_AUTH_INVALIDATED: Protected key material became unreadable and was cleared')
     );
 
