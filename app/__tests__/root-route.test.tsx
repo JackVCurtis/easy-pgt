@@ -46,7 +46,7 @@ describe('root route', () => {
     expect(renderer.root.findByProps({ testID: 'root-route-loading' })).toBeTruthy();
   });
 
-  it('redirects / to onboarding when onboarding is incomplete', async () => {
+  it('redirects first-run users to onboarding', async () => {
     mockHasCompletedOnboarding.mockResolvedValueOnce(false);
 
     let renderer!: ReactTestRenderer;
@@ -60,7 +60,7 @@ describe('root route', () => {
     expect(redirect.props).toMatchObject({ href: '/onboarding' });
   });
 
-  it('redirects / to handshake when onboarding is complete', async () => {
+  it('redirects completed onboarding users to handshake', async () => {
     mockHasCompletedOnboarding.mockResolvedValueOnce(true);
 
     let renderer!: ReactTestRenderer;

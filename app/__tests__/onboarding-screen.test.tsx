@@ -72,6 +72,41 @@ describe('OnboardingScreen', () => {
   });
 
 
+  it.each([
+    { state: 'idle', expected: 'Pending' },
+    { state: 'requesting', expected: 'In progress' },
+    { state: 'granted', expected: 'Completed' },
+    { state: 'denied', expected: 'Failed' },
+    { state: 'blocked', expected: 'Failed' },
+  ] as const)('renders onboarding progress timeline for initializing_keys=$state', ({ state, expected }) => {
+    mockUseOnboardingPermissions.mockReturnValue({
+      grantedCount: state === 'granted' ? 4 : 2,
+      totalCount: 4,
+      isReady: state === 'granted',
+      terminalState: state === 'granted' ? 'ready_to_continue' : 'in_progress',
+      orderedSteps: [
+        { key: 'camera', label: 'Camera', status: 'granted', errorMessage: undefined },
+        { key: 'bluetooth', label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        { key: 'secureStore', label: 'Secure key storage', status: 'granted', errorMessage: undefined },
+        { key: 'initializing_keys', label: 'Initializing keys', status: state, errorMessage: undefined },
+      ],
+      retryStep: jest.fn(async () => undefined),
+      steps: {
+        camera: { label: 'Camera', status: 'granted', errorMessage: undefined },
+        bluetooth: { label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        secureStore: { label: 'Secure key storage', status: 'granted', errorMessage: undefined },
+        initializing_keys: { label: 'Initializing keys', status: state, errorMessage: undefined },
+      },
+    });
+
+    const { getByText } = render(<OnboardingScreen />);
+
+    expect(getByText(`Generating identity keypair: ${expected}`)).toBeTruthy();
+    expect(getByText(`Verifying stored keypair: ${expected}`)).toBeTruthy();
+  });
+
+
+
   it('does not render a skip action for hard security requirements', () => {
     mockUseOnboardingPermissions.mockReturnValue({
       grantedCount: 1,
