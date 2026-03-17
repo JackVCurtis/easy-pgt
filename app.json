@@ -65,6 +65,12 @@
         }
       ],
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Comrades uses Face ID to unlock secure key storage during onboarding and secure identity access."
+        }
+      ],
+      [
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,

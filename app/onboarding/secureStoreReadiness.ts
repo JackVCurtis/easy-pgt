@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 import type { PermissionCheckResult } from '@/app/onboarding/bluetoothPermission';
 import { getSecureStorageCapabilities } from '@/app/security/secureStorageCapabilities';
@@ -11,6 +12,44 @@ const PROBE_AUTH_OPTIONS: SecureStore.SecureStoreOptions = {
   requireAuthentication: true,
   authenticationPrompt: 'Unlock your device to verify secure storage access for Comrades.',
 };
+
+let hasAuthenticatedSinceDeviceUnlock = false;
+
+export function __resetLocalAuthenticationCacheForTests() {
+  hasAuthenticatedSinceDeviceUnlock = false;
+}
+
+async function ensureLocalAuthentication(): Promise<PermissionCheckResult> {
+  if (hasAuthenticatedSinceDeviceUnlock) {
+    return { status: 'granted' };
+  }
+
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+  if (!hasHardware || !isEnrolled) {
+    return {
+      status: 'blocked',
+      errorMessage: 'Secure lock screen / biometrics are not configured. Please enable device authentication first.',
+    };
+  }
+
+  const authentication = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Authenticate to access secure key storage for onboarding.',
+    cancelLabel: 'Cancel',
+  });
+
+  if (!authentication.success) {
+    hasAuthenticatedSinceDeviceUnlock = false;
+    return {
+      status: 'denied',
+      errorMessage: 'Secure key storage permission was denied by the OS.: local_authentication_cancelled',
+    };
+  }
+
+  hasAuthenticatedSinceDeviceUnlock = true;
+  return { status: 'granted' };
+}
 
 export async function probeSecureStoreReadiness(): Promise<PermissionCheckResult> {
   const capabilities = await getSecureStorageCapabilities();
@@ -35,6 +74,11 @@ export async function probeSecureStoreReadiness(): Promise<PermissionCheckResult
   await setSecureStorageMode('authenticated-secure-store');
 
   try {
+    const authResult = await ensureLocalAuthentication();
+    if (authResult.status !== 'granted') {
+      return authResult;
+    }
+
     await SecureStore.setItemAsync(PROBE_KEY, PROBE_VALUE, PROBE_AUTH_OPTIONS);
     const value = await SecureStore.getItemAsync(PROBE_KEY, PROBE_AUTH_OPTIONS);
     await SecureStore.deleteItemAsync(PROBE_KEY);

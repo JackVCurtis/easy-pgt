@@ -91,6 +91,17 @@ describe('native permission configuration', () => {
     );
   });
 
+
+  it('configures local authentication plugin for biometric prompts', () => {
+    const config = loadExpoConfig();
+    const plugins = config.expo?.plugins ?? [];
+    const localAuthenticationPlugin = plugins.find(
+      (entry) => Array.isArray(entry) && entry[0] === 'expo-local-authentication'
+    ) as [string, { faceIDPermission?: string }] | undefined;
+
+    expect(localAuthenticationPlugin).toBeDefined();
+    expect(localAuthenticationPlugin?.[1].faceIDPermission).toEqual(expect.any(String));
+  });
   it('configures secure storage plugin for biometric prompts', () => {
     const config = loadExpoConfig();
     const plugins = config.expo?.plugins ?? [];
