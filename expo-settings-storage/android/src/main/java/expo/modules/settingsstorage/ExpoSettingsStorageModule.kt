@@ -52,12 +52,12 @@ class ExpoSettingsStorageModule : Module() {
 
       val activity = appContext.currentActivity
       if (activity == null) {
-        promise.reject("ERR_NO_ACTIVITY", "No foreground activity available")
+        promise.reject("ERR_NO_ACTIVITY", "No foreground activity available", null)
         return@AsyncFunction
       }
 
       if (pendingGetPromise != null) {
-        promise.reject("ERR_BUSY", "Another secure read is already in progress")
+        promise.reject("ERR_BUSY", "Another secure read is already in progress", null)
         return@AsyncFunction
       }
 
@@ -121,7 +121,7 @@ class ExpoSettingsStorageModule : Module() {
   }
 
   private fun rejectPending(code: String, message: String) {
-    pendingGetPromise?.reject(code, message)
+    pendingGetPromise?.reject(code, message, null)
     clearPending()
   }
 

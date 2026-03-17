@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
 class DeviceAuthHelper(
   private val activity: Activity,
@@ -54,15 +55,19 @@ class DeviceAuthHelper(
       return false
     }
 
+    val canUseBiometricPrompt = activity is FragmentActivity
+
     return if (
       Build.VERSION.SDK_INT >= 30 &&
+      canUseBiometricPrompt &&
       !DISALLOWED_BIOMETRIC_VERSIONS.contains(Build.VERSION.SDK_INT) &&
       biometricManager.canAuthenticate(ALLOWED_AUTHENTICATORS) == BiometricManager.BIOMETRIC_SUCCESS
     ) {
       if (force) {
+        val fragmentActivity = activity as FragmentActivity
         val executor = ContextCompat.getMainExecutor(activity)
         val biometricPrompt = BiometricPrompt(
-          activity,
+          fragmentActivity,
           executor,
           object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
