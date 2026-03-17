@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
 
 import {
@@ -12,6 +13,11 @@ import { probeSecureStoreReadiness } from '@/app/onboarding/secureStoreReadiness
 import { getOrCreateIdentityKeypair } from '@/app/protocol/crypto/identityKeyManager';
 
 export type OnboardingPermissionStepKey = 'camera' | 'bluetooth' | 'secureStore' | 'initializing_keys';
+export type OnboardingTerminalState =
+  | 'in_progress'
+  | 'ready_to_continue'
+  | 'blocked_by_permissions'
+  | 'blocked_by_key_init_failure';
 
 interface OnboardingPermissionStep {
   label: string;
@@ -55,6 +61,46 @@ const STEP_LABELS: Record<OnboardingPermissionStepKey, string> = {
   secureStore: 'Secure key storage',
   initializing_keys: 'Initializing keys',
 };
+
+const FRIENDLY_FAILURE_COPY: Record<string, string> = {
+  CAMERA_PERMISSION_BLOCKED: `Camera access is required for secure QR verification. ${platformSettingsGuidance('camera')}`,
+  BLUETOOTH_PERMISSION_BLOCKED: `Bluetooth access is required for authenticated nearby transport. ${platformSettingsGuidance('bluetooth')}`,
+  SECURESTORE_PERMISSION_BLOCKED: `Secure storage access is required to protect identity keys. ${platformSettingsGuidance('secure storage')}`,
+};
+
+function platformSettingsGuidance(target: 'camera' | 'bluetooth' | 'secure storage'): string {
+  if (Platform.OS === 'ios') {
+    return `Open Settings > Comrades > ${target === 'secure storage' ? 'Face ID/Passcode permissions' : target} and allow access.`;
+  }
+
+  return `Open Settings > Apps > Comrades > Permissions > ${target} and allow access.`;
+}
+
+function normalizeFailureReason(reason: string): string {
+  const [baseReason] = reason.split(':');
+  return baseReason.trim().toUpperCase();
+}
+
+function normalizePermissionErrorMessage(
+  key: Exclude<OnboardingPermissionStepKey, 'initializing_keys'>,
+  result: PermissionCheckResult,
+  wasPermanentlyDenied: boolean
+): string | undefined {
+  if (!result.errorMessage) {
+    return undefined;
+  }
+
+  if (key === 'camera' && wasPermanentlyDenied) {
+    return FRIENDLY_FAILURE_COPY.CAMERA_PERMISSION_BLOCKED;
+  }
+
+  if (result.status !== 'blocked') {
+    return result.errorMessage;
+  }
+
+  const normalizedReason = normalizeFailureReason(`${key}_permission_blocked`);
+  return FRIENDLY_FAILURE_COPY[normalizedReason] ?? result.errorMessage;
+}
 
 function createInitialSteps(): StepStateMap {
   return {
@@ -113,7 +159,7 @@ export function useOnboardingPermissions(ports: UseOnboardingPermissionsPorts = 
     if (response.canAskAgain === false) {
       return {
         status: 'blocked',
-        errorMessage: 'Camera permission is blocked. Enable camera access in system settings.',
+        errorMessage: 'camera_permission_blocked',
       };
     }
 
@@ -155,16 +201,28 @@ export function useOnboardingPermissions(ports: UseOnboardingPermissionsPorts = 
       result = await runIdentityInitialization();
     }
 
+    const normalizedErrorMessage =
+      key === 'initializing_keys'
+        ? result.errorMessage
+        : normalizePermissionErrorMessage(
+            key,
+            result,
+            key === 'camera' && result.errorMessage === 'camera_permission_blocked' && result.status === 'blocked'
+          );
+
     setSteps((previous) => ({
       ...previous,
       [key]: {
         ...previous[key],
         status: result.status,
-        errorMessage: result.errorMessage,
+        errorMessage: normalizedErrorMessage,
       },
     }));
 
-    return result;
+    return {
+      ...result,
+      errorMessage: normalizedErrorMessage,
+    };
   }, [checkBluetoothReadiness, checkSecureStoreReadiness, requestCamera, runIdentityInitialization]);
 
   const runChecksFromStep = useCallback(async (startKey: OnboardingPermissionStepKey): Promise<void> => {
@@ -192,13 +250,28 @@ export function useOnboardingPermissions(ports: UseOnboardingPermissionsPorts = 
 
   const grantedCount = STEP_ORDER.filter((key) => steps[key].status === 'granted').length;
   const totalCount = STEP_ORDER.length;
+  const isReady = grantedCount === totalCount;
+
+  const terminalState: OnboardingTerminalState = isReady
+    ? 'ready_to_continue'
+    : steps.initializing_keys.status === 'denied' || steps.initializing_keys.status === 'blocked'
+      ? 'blocked_by_key_init_failure'
+      : steps.camera.status === 'denied' ||
+          steps.camera.status === 'blocked' ||
+          steps.bluetooth.status === 'denied' ||
+          steps.bluetooth.status === 'blocked' ||
+          steps.secureStore.status === 'denied' ||
+          steps.secureStore.status === 'blocked'
+        ? 'blocked_by_permissions'
+        : 'in_progress';
 
   return {
     steps,
     orderedSteps: STEP_ORDER.map((key) => ({ key, ...steps[key] })),
     grantedCount,
     totalCount,
-    isReady: grantedCount === totalCount,
+    isReady,
+    terminalState,
     retryStep,
   };
 }
