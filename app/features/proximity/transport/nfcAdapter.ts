@@ -2,7 +2,7 @@ import { type NfcBootstrapV1 } from '@/app/protocol/transport';
 
 import type { ProximityNfcPort } from './types';
 
-const BOOTSTRAP_RECORD_TYPE = 'application/vnd.easy-pgt.bootstrap+json';
+const BOOTSTRAP_RECORD_TYPE = 'application/vnd.comrades.bootstrap+json';
 
 interface NfcManagerLike {
   start(): Promise<void>;
