@@ -36,4 +36,16 @@ describe('identity initialization failure mapping', () => {
     });
   });
 
+  it('maps invalidated-key errors to onboarding recovery guidance', () => {
+    expect(
+      mapIdentityInitializationFailure(
+        new Error('KEY_STORAGE_AUTH_INVALIDATED: Protected key material became unreadable and was cleared')
+      )
+    ).toEqual({
+      status: 'blocked',
+      errorMessage:
+        'Protected key material is no longer readable (for example after biometric changes). Re-run onboarding key setup.',
+    });
+  });
+
 });

@@ -69,6 +69,7 @@ describe('secure key storage', () => {
     const setItemAsync = jest.mocked(SecureStore.setItemAsync);
 
     getItemAsync.mockResolvedValueOnce(null);
+    getItemAsync.mockResolvedValueOnce(null);
     setItemAsync.mockResolvedValueOnce(undefined);
 
     const adapter = createExpoSecureStoreAdapter();
@@ -77,11 +78,11 @@ describe('secure key storage', () => {
 
     expect(getItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1', {
       requireAuthentication: true,
-      authenticationPrompt: 'Unlock your device to access your Comrades identity keys.',
+      authenticationPrompt: 'Unlock your device to access protected Comrades data.',
     });
     expect(setItemAsync).toHaveBeenCalledWith('pgt.identity.keypair.v1', 'payload', {
       requireAuthentication: true,
-      authenticationPrompt: 'Unlock your device to access your Comrades identity keys.',
+      authenticationPrompt: 'Unlock your device to access protected Comrades data.',
     });
   });
 

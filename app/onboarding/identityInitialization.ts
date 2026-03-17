@@ -26,6 +26,14 @@ export function mapIdentityInitializationFailure(error: unknown): PermissionChec
     };
   }
 
+  if (message.includes('invalidated') || message.includes('unreadable and was cleared')) {
+    return {
+      status: 'blocked',
+      errorMessage:
+        'Protected key material is no longer readable (for example after biometric changes). Re-run onboarding key setup.',
+    };
+  }
+
   if (isSecureStoreAuthenticationError(message)) {
     return {
       status: 'denied',

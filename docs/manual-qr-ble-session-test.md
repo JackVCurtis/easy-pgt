@@ -51,3 +51,9 @@ Not implemented here: Merkle root compare, subtree reconciliation, record transf
 - Camera permission is required for QR scan intake.
 - Expo Go may not expose all native camera/BLE plugin behavior needed for this manual slice.
 - This slice provides deterministic protocol checks and developer diagnostics first; full transport productionization is a later step.
+
+## Android secure-storage onboarding validation (manual)
+
+1. Run onboarding on Android device with screen lock + biometrics enabled and verify secure-storage step succeeds with authenticated mode.
+2. Run onboarding on Android device/emulator without enrolled biometrics and verify onboarding shows secure-storage guidance, uses fallback mode, and still proceeds.
+3. After authenticated-mode onboarding, change biometric enrollment and relaunch to verify invalidated key recovery clears stale entry and routes user through key re-initialization guidance.

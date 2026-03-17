@@ -164,4 +164,42 @@ describe('OnboardingScreen', () => {
       expect(mockReplace).toHaveBeenCalledWith('/handshake');
     });
   });
+
+  it('shows Android secure-storage fallback guidance when authenticated mode is unavailable', () => {
+    mockUseOnboardingPermissions.mockReturnValue({
+      grantedCount: 4,
+      totalCount: 4,
+      isReady: true,
+      terminalState: 'ready_to_continue',
+      orderedSteps: [
+        { key: 'camera', label: 'Camera', status: 'granted', errorMessage: undefined },
+        { key: 'bluetooth', label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        {
+          key: 'secureStore',
+          label: 'Secure key storage',
+          status: 'granted',
+          errorMessage:
+            'Secure lock screen / biometrics are not configured. Continuing with secure storage without OS authentication prompts.',
+        },
+        { key: 'initializing_keys', label: 'Initializing keys', status: 'granted', errorMessage: undefined },
+      ],
+      retryStep: jest.fn(async () => undefined),
+      steps: {
+        camera: { label: 'Camera', status: 'granted', errorMessage: undefined },
+        bluetooth: { label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        secureStore: {
+          label: 'Secure key storage',
+          status: 'granted',
+          errorMessage:
+            'Secure lock screen / biometrics are not configured. Continuing with secure storage without OS authentication prompts.',
+        },
+        initializing_keys: { label: 'Initializing keys', status: 'granted', errorMessage: undefined },
+      },
+    });
+
+    const { getByText } = render(<OnboardingScreen />);
+
+    expect(getByText('Android secure storage readiness')).toBeTruthy();
+    expect(getByText(/This feature uses your device's secure lock screen/i)).toBeTruthy();
+  });
 });

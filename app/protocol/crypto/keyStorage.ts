@@ -1,18 +1,14 @@
 import * as SecureStore from 'expo-secure-store';
+import { getSecureStorageMode, getSecureStoreOptionsForMode } from '@/app/security/secureStorage';
 
 import { generateIdentityKeypair } from './crypto';
 import { decodeBase64 } from './encoding';
 
 const DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY = 'pgt.identity.keypair.v1';
-const IDENTITY_KEYPAIR_AUTH_PROMPT = 'Unlock your device to access your Comrades identity keys.';
-
-const IDENTITY_KEYPAIR_AUTH_OPTIONS: SecureStore.SecureStoreOptions = {
-  requireAuthentication: true,
-  authenticationPrompt: IDENTITY_KEYPAIR_AUTH_PROMPT,
-};
-
 const KEY_STORAGE_CORRUPTED_ERROR_MESSAGE =
   'KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted';
+const KEY_STORAGE_INVALIDATED_ERROR_MESSAGE =
+  'KEY_STORAGE_AUTH_INVALIDATED: Protected key material became unreadable and was cleared';
 
 export type StoredIdentityKeypair = {
   version: 1;
@@ -55,15 +51,25 @@ function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is S
 }
 
 export function createExpoSecureStoreAdapter(): SecureStoreAdapter {
-  const optionsForKey = (key: string): SecureStore.SecureStoreOptions | undefined =>
-    key === DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY ? IDENTITY_KEYPAIR_AUTH_OPTIONS : undefined;
-
   return {
     async getItem(key: string) {
-      return SecureStore.getItemAsync(key, optionsForKey(key));
+      const mode = key === DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY ? await getSecureStorageMode() : undefined;
+
+      try {
+        return await SecureStore.getItemAsync(key, mode ? getSecureStoreOptionsForMode(mode) : undefined);
+      } catch (error) {
+        const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+        if (message.includes('invalidated')) {
+          await SecureStore.deleteItemAsync(key);
+          throw new Error(KEY_STORAGE_INVALIDATED_ERROR_MESSAGE);
+        }
+
+        throw error;
+      }
     },
     async setItem(key: string, value: string) {
-      await SecureStore.setItemAsync(key, value, optionsForKey(key));
+      const mode = key === DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY ? await getSecureStorageMode() : undefined;
+      await SecureStore.setItemAsync(key, value, mode ? getSecureStoreOptionsForMode(mode) : undefined);
     },
     async deleteItem(key: string) {
       await SecureStore.deleteItemAsync(key);

@@ -60,7 +60,8 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Comrades uses secure storage to protect identity keys behind device authentication."
+          "faceIDPermission": "Comrades uses secure storage to protect identity keys behind device authentication.",
+          "configureAndroidBackup": true
         }
       ],
       [

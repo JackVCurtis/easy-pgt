@@ -590,6 +590,16 @@ createExpoSecureStoreAdapter()
 createInMemorySecureStoreAdapter(initialData?)
 ```
 
+### Android secure-storage onboarding notes
+
+* On Android, onboarding now checks `SecureStore.isAvailableAsync()` and `SecureStore.canUseBiometricAuthentication()` before enabling authentication-gated storage.
+* Capability detection chooses one explicit mode:
+  * `authenticated-secure-store` when OS-backed auth prompts can be used,
+  * `secure-store-without-auth` when SecureStore exists but device auth is not configured,
+  * `defer-sensitive-persistence` when SecureStore is unavailable.
+* If authenticated entries later become unreadable (for example, key invalidation after biometric changes), the unreadable value is cleared and onboarding prompts the user to restore protected state.
+* The Expo SecureStore config plugin is configured with `configureAndroidBackup: true` so SecureStore data remains excluded from Android Auto Backup restores that cannot decrypt Keystore-bound entries.
+
 * [x] Cryptographic validation path implemented (`app/protocol/validation/validateRecordCryptography.ts`) and wired to canonical signing payload bytes from `app/protocol/validation/crypto/signingPayload.ts`.
 
 ### Remaining for production readiness

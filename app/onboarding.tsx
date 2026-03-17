@@ -96,6 +96,16 @@ export default function OnboardingScreen() {
   };
 
   const initializationStep = steps.initializing_keys;
+  const secureStoreStep = steps.secureStore;
+
+  const secureStorageGuidance =
+    secureStoreStep.status === 'granted' && secureStoreStep.errorMessage
+      ? secureStoreStep.errorMessage
+      : secureStoreStep.status === 'blocked'
+        ? 'This device cannot enable authentication-protected secure storage. Sensitive setup may need to be deferred.'
+        : secureStoreStep.status === 'denied'
+          ? 'Device authentication was declined. Retry after enabling screen lock / biometrics in system settings.'
+          : undefined;
 
   return (
     <View style={styles.container}>
@@ -106,6 +116,16 @@ export default function OnboardingScreen() {
       <Text style={styles.progress}>Permissions ready: {grantedCount}/{totalCount}</Text>
       <Text style={styles.progress}>Security status: {terminalState}</Text>
       {!isReady ? <Text style={styles.errorText}>Skip is unavailable because this is a hard security requirement.</Text> : null}
+
+      {secureStorageGuidance ? (
+        <View style={styles.checklistRow}>
+          <Text style={styles.stepTitle}>Android secure storage readiness</Text>
+          <Text style={styles.body}>{secureStorageGuidance}</Text>
+          <Text style={styles.body}>
+            This feature uses your device&apos;s secure lock screen / biometrics to protect sensitive data.
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.checklist}>
         {timeline.map((entry) => (
