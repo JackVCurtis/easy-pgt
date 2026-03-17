@@ -12,6 +12,15 @@ const CURVE25519_SECRET_KEY_LENGTH = 32;
 const CURVE25519_PUBLIC_KEY_LENGTH = 32;
 const SIGNATURE_LENGTH = 64;
 
+const CRYPTO_ERROR_MESSAGES = {
+  invalidEd25519SecretKey: 'CRYPTO_INVALID_ED25519_SECRET_KEY: Invalid Ed25519 secret key encoding',
+  invalidCurve25519SecretKey: 'CRYPTO_INVALID_CURVE25519_SECRET_KEY: Invalid Curve25519 secret key encoding',
+  invalidSignature: 'CRYPTO_INVALID_SIGNATURE_ENCODING: Invalid signature encoding',
+  invalidPublicKey: 'CRYPTO_INVALID_PUBLIC_KEY_ENCODING: Invalid public key encoding',
+  invalidIdentitySeed: 'CRYPTO_INVALID_IDENTITY_SEED_LENGTH: Identity seed must be 32 bytes',
+  invalidEphemeralSecretLength: 'CRYPTO_INVALID_EPHEMERAL_SECRET_KEY_LENGTH: Ephemeral secret key must be 32 bytes',
+} as const;
+
 export type EncodedIdentityKeypair = {
   publicKey: string;
   secretKey: string;
@@ -41,7 +50,7 @@ function cloneBytes(bytes: Uint8Array): Uint8Array {
 function decodeIdentitySecretKey(secretKey: string): Uint8Array {
   const decoded = decodeBase64(secretKey, ED25519_SECRET_KEY_LENGTH);
   if (!decoded) {
-    throw new Error('Invalid Ed25519 secret key encoding');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidEd25519SecretKey);
   }
 
   return decoded;
@@ -50,7 +59,7 @@ function decodeIdentitySecretKey(secretKey: string): Uint8Array {
 function decodeEphemeralSecretKey(secretKey: string): Uint8Array {
   const decoded = decodeBase64(secretKey, CURVE25519_SECRET_KEY_LENGTH);
   if (!decoded) {
-    throw new Error('Invalid Curve25519 secret key encoding');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidCurve25519SecretKey);
   }
 
   return decoded;
@@ -59,7 +68,7 @@ function decodeEphemeralSecretKey(secretKey: string): Uint8Array {
 function decodeSignature(signature: string): Uint8Array {
   const decoded = decodeBase64(signature, SIGNATURE_LENGTH);
   if (!decoded) {
-    throw new Error('Invalid signature encoding');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidSignature);
   }
 
   return decoded;
@@ -68,7 +77,7 @@ function decodeSignature(signature: string): Uint8Array {
 function decodePeerPublicKey(publicKey: string): Uint8Array {
   const decoded = decodePublicKey(publicKey);
   if (!decoded || decoded.length !== CURVE25519_PUBLIC_KEY_LENGTH) {
-    throw new Error('Invalid public key encoding');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidPublicKey);
   }
 
   return decoded;
@@ -84,7 +93,7 @@ function derivePayloadBytes(recordOrBytes: DurableRecord | Record<string, unknow
 
 export function generateIdentityKeypair(options: GenerateIdentityKeypairOptions = {}): EncodedIdentityKeypair {
   if (options.seed && options.seed.length !== ED25519_SEED_LENGTH) {
-    throw new Error('Identity seed must be 32 bytes');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidIdentitySeed);
   }
 
   const keypair = options.seed ? nacl.sign.keyPair.fromSeed(options.seed) : nacl.sign.keyPair();
@@ -99,7 +108,7 @@ export function generateIdentityKeypair(options: GenerateIdentityKeypairOptions 
 
 export function generateEphemeralKeypair(options: GenerateEphemeralKeypairOptions = {}): EncodedEphemeralKeypair {
   if (options.secretKey && options.secretKey.length !== CURVE25519_SECRET_KEY_LENGTH) {
-    throw new Error('Ephemeral secret key must be 32 bytes');
+    throw new Error(CRYPTO_ERROR_MESSAGES.invalidEphemeralSecretLength);
   }
 
   const keypair = options.secretKey

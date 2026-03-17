@@ -5,6 +5,9 @@ import { decodeBase64 } from './encoding';
 
 const DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY = 'pgt.identity.keypair.v1';
 
+const KEY_STORAGE_CORRUPTED_ERROR_MESSAGE =
+  'KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted';
+
 export type StoredIdentityKeypair = {
   version: 1;
   publicKey: string;
@@ -25,23 +28,23 @@ export type SecureStoreAdapter = {
 
 function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is StoredIdentityKeypair {
   if (!candidate || typeof candidate !== 'object') {
-    throw new Error('Stored identity keypair is corrupted');
+    throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }
 
   const value = candidate as Partial<StoredIdentityKeypair>;
   if (value.version !== 1 || typeof value.publicKey !== 'string' || typeof value.secretKey !== 'string') {
-    throw new Error('Stored identity keypair is corrupted');
+    throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }
 
   const decodedSecretKey = decodeBase64(value.secretKey, 64);
   const decodedPublicKey = decodeBase64(value.publicKey, 32);
   if (!decodedSecretKey || !decodedPublicKey) {
-    throw new Error('Stored identity keypair is corrupted');
+    throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }
 
   const derivedPublicKey = generateIdentityKeypair({ seed: decodedSecretKey.slice(0, 32) }).publicKey;
   if (derivedPublicKey !== value.publicKey) {
-    throw new Error('Stored identity keypair is corrupted');
+    throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }
 }
 
@@ -90,7 +93,7 @@ export function createSecureKeyStorage(
       try {
         parsed = JSON.parse(raw);
       } catch {
-        throw new Error('Stored identity keypair is corrupted');
+        throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
       }
 
       assertStoredIdentityKeypair(parsed);
