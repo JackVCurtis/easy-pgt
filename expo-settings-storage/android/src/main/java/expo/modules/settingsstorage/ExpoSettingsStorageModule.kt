@@ -3,8 +3,6 @@ package expo.modules.settingsstorage
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -32,23 +30,26 @@ class ExpoSettingsStorageModule : Module() {
     private const val AUTH_VALIDITY_SECONDS = 30
   }
 
-  private val mainHandler = Handler(Looper.getMainLooper())
+  private sealed interface PendingAction {
+    data class Get(val key: String) : PendingAction
+    data class Set(val key: String, val value: String) : PendingAction
+  }
 
-  private var pendingGetPromise: Promise? = null
-  private var pendingGetKey: String? = null
+  private data class PendingRequest(
+    val promise: Promise,
+    val action: PendingAction,
+    val hasRetriedAuth: Boolean = false
+  )
+
+  private var pendingRequest: PendingRequest? = null
   private var authHelper: DeviceAuthHelper? = null
 
   override fun definition() = ModuleDefinition {
     Name(MODULE_NAME)
 
-    AsyncFunction("setItem") { key: String, value: String ->
-      val cipher = Cipher.getInstance(TRANSFORMATION)
-      cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
-
-      val ciphertext = cipher.doFinal(value.toByteArray(StandardCharsets.UTF_8))
-      val payload = encode(cipher.iv, ciphertext)
-
-      prefs().edit().putString(key, payload).apply()
+    AsyncFunction("setItem") { key: String, value: String, promise: Promise ->
+      val action = PendingAction.Set(key, value)
+      beginAuthenticatedRequest(action, promise)
     }
 
     AsyncFunction("getItem") { key: String, promise: Promise ->
@@ -58,46 +59,8 @@ class ExpoSettingsStorageModule : Module() {
         return@AsyncFunction
       }
 
-      val activity = appContext.currentActivity
-      if (activity == null) {
-        promise.reject("ERR_NO_ACTIVITY", "No foreground activity available", null)
-        return@AsyncFunction
-      }
-
-      val fragmentActivity = activity as? FragmentActivity
-      if (fragmentActivity == null) {
-        promise.reject(
-          "ERR_ACTIVITY",
-          "Current activity must be a FragmentActivity to show BiometricPrompt",
-          null
-        )
-        return@AsyncFunction
-      }
-
-      if (pendingGetPromise != null) {
-        promise.reject("ERR_BUSY", "Another secure read is already in progress", null)
-        return@AsyncFunction
-      }
-
-      pendingGetPromise = promise
-      pendingGetKey = key
-
-      mainHandler.post {
-        try {
-          authHelper = DeviceAuthHelper(
-            activity = fragmentActivity,
-            onSuccess = { finishPendingDecrypt() },
-            onError = { message -> rejectPending("ERR_AUTH", message) }
-          )
-
-          val launched = authHelper!!.authenticate(force = true)
-          if (!launched) {
-            rejectPending("ERR_AUTH", "Unable to launch authentication")
-          }
-        } catch (e: Exception) {
-          rejectPending("ERR_AUTH", "Failed to start authentication: ${e.message}")
-        }
-      }
+      val action = PendingAction.Get(key)
+      beginAuthenticatedRequest(action, promise)
     }
 
     AsyncFunction("deleteItem") { key: String ->
@@ -113,48 +76,118 @@ class ExpoSettingsStorageModule : Module() {
     }
   }
 
-  private fun finishPendingDecrypt() {
-    val promise = pendingGetPromise ?: return
-    val key = pendingGetKey ?: return
+  private fun finishPendingRequest() {
+    val pending = pendingRequest ?: return
+    var shouldClear = true
 
     try {
-      val payload = prefs().getString(key, null)
-      if (payload == null) {
-        promise.resolve(null)
-        clearPending()
+      when (val action = pending.action) {
+        is PendingAction.Set -> {
+          val cipher = Cipher.getInstance(TRANSFORMATION)
+          cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
+
+          val ciphertext = cipher.doFinal(action.value.toByteArray(StandardCharsets.UTF_8))
+          val payload = encode(cipher.iv, ciphertext)
+
+          prefs().edit().putString(action.key, payload).apply()
+          pending.promise.resolve(null)
+        }
+
+        is PendingAction.Get -> {
+          val payload = prefs().getString(action.key, null)
+          if (payload == null) {
+            pending.promise.resolve(null)
+            return
+          }
+
+          val (iv, ciphertext) = decode(payload)
+
+          val cipher = Cipher.getInstance(TRANSFORMATION)
+          cipher.init(
+            Cipher.DECRYPT_MODE,
+            getOrCreateSecretKey(),
+            GCMParameterSpec(TAG_SIZE_BITS, iv)
+          )
+
+          val plaintextBytes = cipher.doFinal(ciphertext)
+          pending.promise.resolve(String(plaintextBytes, StandardCharsets.UTF_8))
+        }
+      }
+    } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+      if (!pending.hasRetriedAuth) {
+        pendingRequest = pending.copy(hasRetriedAuth = true)
+        shouldClear = false
+        launchAuthentication()
         return
       }
 
-      val (iv, ciphertext) = decode(payload)
-
-      val cipher = Cipher.getInstance(TRANSFORMATION)
-      cipher.init(
-        Cipher.DECRYPT_MODE,
-        getOrCreateSecretKey(),
-        GCMParameterSpec(TAG_SIZE_BITS, iv)
-      )
-
-      val plaintextBytes = cipher.doFinal(ciphertext)
-      promise.resolve(String(plaintextBytes, StandardCharsets.UTF_8))
-    } catch (e: android.security.keystore.UserNotAuthenticatedException) {
-      promise.reject("ERR_AUTH", "User authentication timed out before decrypt", e)
+      pending.promise.reject("ERR_AUTH", "User authentication timed out before accessing secure storage", e)
     } catch (e: AEADBadTagException) {
-      promise.reject("ERR_DECRYPT", "Stored value could not be authenticated", e)
+      pending.promise.reject("ERR_DECRYPT", "Stored value could not be authenticated", e)
     } catch (e: Exception) {
-      promise.reject("ERR_DECRYPT", "Failed to decrypt value", e)
+      pending.promise.reject("ERR_DECRYPT", "Failed to access secure storage", e)
     } finally {
+      if (shouldClear) {
+        clearPending()
+      }
+    }
+  }
+
+  private fun beginAuthenticatedRequest(action: PendingAction, promise: Promise) {
+    if (pendingRequest != null) {
+      promise.reject("ERR_BUSY", "Another secure storage operation is already in progress", null)
+      return
+    }
+
+    pendingRequest = PendingRequest(promise = promise, action = action)
+    launchAuthentication()
+  }
+
+  private fun launchAuthentication() {
+    val pending = pendingRequest ?: return
+    val activity = appContext.currentActivity
+    if (activity == null) {
+      pending.promise.reject("ERR_NO_ACTIVITY", "No foreground activity available", null)
       clearPending()
+      return
+    }
+
+    val fragmentActivity = activity as? FragmentActivity
+    if (fragmentActivity == null) {
+      pending.promise.reject(
+        "ERR_ACTIVITY",
+        "Current activity must be a FragmentActivity to show BiometricPrompt",
+        null
+      )
+      clearPending()
+      return
+    }
+
+    fragmentActivity.runOnUiThread {
+      try {
+        authHelper = DeviceAuthHelper(
+          activity = fragmentActivity,
+          onSuccess = { finishPendingRequest() },
+          onError = { message -> rejectPending("ERR_AUTH", message) }
+        )
+
+        val launched = authHelper!!.authenticate(force = true)
+        if (!launched) {
+          rejectPending("ERR_AUTH", "Unable to launch authentication")
+        }
+      } catch (e: Exception) {
+        rejectPending("ERR_AUTH", "Failed to start authentication: ${e.message}")
+      }
     }
   }
 
   private fun rejectPending(code: String, message: String) {
-    pendingGetPromise?.reject(code, message, null)
+    pendingRequest?.promise?.reject(code, message, null)
     clearPending()
   }
 
   private fun clearPending() {
-    pendingGetPromise = null
-    pendingGetKey = null
+    pendingRequest = null
     authHelper = null
   }
 
