@@ -53,6 +53,10 @@ function mapAsyncRuntimeError(error: unknown): string {
     return 'CAMERA_PERMISSION_DENIED';
   }
 
+  if (message.includes('device uuid unavailable') || message.includes('local service uuid unavailable')) {
+    return 'DEVICE_UUID_UNAVAILABLE';
+  }
+
   if (message.includes('ble') && (message.includes('unavailable') || message.includes('disabled'))) {
     return 'BLE_UNAVAILABLE_OR_DISABLED';
   }
@@ -101,17 +105,19 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
     }
   };
 
-  const prepareWriterPayload = async (identityBindingHash: string, bluetoothServiceUuid: string) => {
+  const prepareWriterPayload = async (identityBindingHash: string) => {
     dispatch({ type: 'set_status', status: 'bootstrap_preparing' });
     pushDiagnosticEvent({ source: 'qr', action: 'generate_start', detail: 'Preparing signed QR bootstrap payload.' });
 
     try {
+      const localServiceUuid = await blePort.getLocalServiceUuid();
+
       const signable: SignableQrBootstrapV1 = {
         version: 1,
         session_uuid: createProximitySessionUuid(),
         identity_binding_hash: identityBindingHash,
         ephemeral_public_key: toBase64(ensureLocalKeys().ephemeral.publicKey),
-        bluetooth_service_uuid: bluetoothServiceUuid,
+        bluetooth_service_uuid: localServiceUuid,
         nonce: createProximityNonceHex(),
       };
 

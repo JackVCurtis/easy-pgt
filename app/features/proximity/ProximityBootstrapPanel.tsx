@@ -16,6 +16,7 @@ const FRIENDLY_FAILURE_COPY: Record<string, string> = {
   CAMERA_PERMISSION_DENIED: 'Camera permission denied. QR scanning is blocked and BLE auth is fail-closed.',
   BLE_UNAVAILABLE_OR_DISABLED: 'BLE is unavailable or disabled on this device.',
   SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND: 'No matching BLE device was found before timeout.',
+  DEVICE_UUID_UNAVAILABLE: 'Device BLE service UUID is unavailable, so QR generation is blocked.',
   SIGNATURE_INVALID: 'Bootstrap signature is invalid.',
   MISMATCH: 'Bootstrap and discovery data mismatch detected.',
 };
@@ -64,7 +65,6 @@ export function ProximityBootstrapPanel() {
   } = useProximityBootstrap();
 
   const [identityBindingHash, setIdentityBindingHash] = useState('a'.repeat(64));
-  const [serviceUuid, setServiceUuid] = useState('6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
 
   const isWorking = useMemo(
     () => ['bootstrap_preparing', 'bootstrap_scanned', 'ble_scanning', 'ble_connecting', 'session_authenticating'].includes(state.status),
@@ -82,6 +82,7 @@ export function ProximityBootstrapPanel() {
       <ThemedText>Status: {state.status}</ThemedText>
       {failureMessage ? <ThemedText style={styles.error}>Failure: {failureMessage}</ThemedText> : null}
       {diagnostic ? <ThemedText>{diagnostic}</ThemedText> : null}
+      <ThemedText>Using device BLE service UUID.</ThemedText>
 
       <ThemedText>Identity binding hash</ThemedText>
       <TextInput
@@ -89,17 +90,10 @@ export function ProximityBootstrapPanel() {
         onChangeText={setIdentityBindingHash}
         style={[styles.input, { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: inputTextColor }]}
       />
-      <ThemedText>Service UUID</ThemedText>
-      <TextInput
-        value={serviceUuid}
-        onChangeText={setServiceUuid}
-        style={[styles.input, { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: inputTextColor }]}
-      />
-
       <AppButton
         label="Generate QR bootstrap"
         onPress={() => {
-          void prepareWriterPayload(identityBindingHash, serviceUuid);
+          void prepareWriterPayload(identityBindingHash);
         }}
         disabled={!canGenerateBootstrap || isWorking}
       />
