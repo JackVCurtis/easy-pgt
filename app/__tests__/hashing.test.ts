@@ -1,4 +1,4 @@
-import { computeLeafHash, computeRecordHash } from '@/app/crypto/hashing';
+import { computeLeafHash, computeRecordHash } from '@/app/protocol/crypto/hash';
 import { hexToBytes } from '@/app/utils/bytes';
 
 function toHex(bytes: Uint8Array): string {
@@ -8,54 +8,54 @@ function toHex(bytes: Uint8Array): string {
 }
 
 describe('domain-separated hashing helpers', () => {
-  it('produces deterministic record hashes for identical canonical bytes', async () => {
+  it('produces deterministic record hashes for identical canonical bytes', () => {
     const canonicalBytes = new TextEncoder().encode('abc');
 
-    const first = await computeRecordHash(canonicalBytes);
-    const second = await computeRecordHash(canonicalBytes);
+    const first = computeRecordHash(canonicalBytes);
+    const second = computeRecordHash(canonicalBytes);
 
     expect(toHex(first)).toBe('a1f3ee508469c36640f2206ab1480fa928026bf2052b3861e0650380e2395aa0');
     expect(toHex(second)).toBe(toHex(first));
   });
 
-  it('produces deterministic leaf hashes for identical record hashes', async () => {
+  it('produces deterministic leaf hashes for identical record hashes', () => {
     const recordHash = hexToBytes('a1f3ee508469c36640f2206ab1480fa928026bf2052b3861e0650380e2395aa0');
 
-    const first = await computeLeafHash(recordHash);
-    const second = await computeLeafHash(recordHash);
+    const first = computeLeafHash(recordHash);
+    const second = computeLeafHash(recordHash);
 
     expect(toHex(first)).toBe('35dc56edb4b66318a5be7f620151abb6f605716fc2e58bc4f945dd8feddd2145');
     expect(toHex(second)).toBe(toHex(first));
   });
 
-  it('enforces domain separation between record and leaf prefixes', async () => {
+  it('enforces domain separation between record and leaf prefixes', () => {
     const bytes = new TextEncoder().encode('abc');
 
-    const recordHash = await computeRecordHash(bytes);
-    const leafLikeHash = await computeLeafHash(bytes);
+    const recordHash = computeRecordHash(bytes);
+    const leafLikeHash = computeLeafHash(bytes);
 
     expect(toHex(recordHash)).not.toBe(toHex(leafLikeHash));
     expect(toHex(leafLikeHash)).toBe('b27a6192bc31c5026b6fd946d68e9039ff57a1ac6ff1d8ac9dcfb3f5276cb65d');
   });
 
-  it('matches canonical parity for leaf hash derivation', async () => {
+  it('matches canonical parity for leaf hash derivation', () => {
     const bytes = new TextEncoder().encode('abc');
 
-    const recordHash = await computeRecordHash(bytes);
-    const leafHash = await computeLeafHash(recordHash);
+    const recordHash = computeRecordHash(bytes);
+    const leafHash = computeLeafHash(recordHash);
 
     expect(toHex(leafHash)).toBe('35dc56edb4b66318a5be7f620151abb6f605716fc2e58bc4f945dd8feddd2145');
   });
 
-  it('supports empty and large canonical byte payloads', async () => {
+  it('supports empty and large canonical byte payloads', () => {
     const emptyBytes = new Uint8Array();
     const largeBytes = new Uint8Array(4096).fill('x'.charCodeAt(0));
 
-    const emptyRecordHash = await computeRecordHash(emptyBytes);
-    const emptyLeafHash = await computeLeafHash(emptyRecordHash);
+    const emptyRecordHash = computeRecordHash(emptyBytes);
+    const emptyLeafHash = computeLeafHash(emptyRecordHash);
 
-    const largeRecordHash = await computeRecordHash(largeBytes);
-    const largeLeafHash = await computeLeafHash(largeRecordHash);
+    const largeRecordHash = computeRecordHash(largeBytes);
+    const largeLeafHash = computeLeafHash(largeRecordHash);
 
     expect(toHex(emptyRecordHash)).toBe('36c4b87234ed9ca3fa30c2355d3efee021f8e48e5fc02fc93c56700190fe6298');
     expect(toHex(emptyLeafHash)).toBe('55fd24420011ffe3b9cf9e5ed9e34dd06091122a8c82e1966c2b24195dd8a35c');

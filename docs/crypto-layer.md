@@ -59,3 +59,11 @@ Stored value format (versioned):
 ```
 
 Load and save both validate shape and key lengths. Corruption or mismatch between stored public key and secret key-derived public key is rejected.
+
+## Hashing source of truth
+
+Protocol hashing lives in `app/protocol/crypto/hash.ts`.
+
+- Use `computeRecordHash` and `computeLeafHash` directly for protocol code paths (synchronous/deterministic API).
+- Compatibility async wrappers (`computeRecordHashAsync`, `computeLeafHashAsync`) are provided for migration only and should not be preferred in new protocol code.
+- `app/crypto/hashing.ts` is deprecated and should be treated as a non-protocol compatibility layer.

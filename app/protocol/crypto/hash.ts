@@ -6,6 +6,8 @@ type ExpoCryptoNativeModule = {
 };
 
 const textEncoder = new TextEncoder();
+const RECORD_HASH_PREFIX = textEncoder.encode('record_hash_v1');
+const MERKLE_LEAF_PREFIX = textEncoder.encode('merkle_leaf_v1');
 
 let nativeDigest: ExpoCryptoNativeModule['digest'];
 try {
@@ -138,4 +140,20 @@ export function sha256Hex(chunks: Array<string | Uint8Array>): string {
   }
 
   return bytesToHex(sha256Fallback(input));
+}
+
+export function computeRecordHash(canonicalBytes: Uint8Array): Uint8Array {
+  return hexToBytes(sha256Hex([RECORD_HASH_PREFIX, canonicalBytes]));
+}
+
+export function computeLeafHash(recordHash: Uint8Array): Uint8Array {
+  return hexToBytes(sha256Hex([MERKLE_LEAF_PREFIX, recordHash]));
+}
+
+export async function computeRecordHashAsync(canonicalBytes: Uint8Array): Promise<Uint8Array> {
+  return computeRecordHash(canonicalBytes);
+}
+
+export async function computeLeafHashAsync(recordHash: Uint8Array): Promise<Uint8Array> {
+  return computeLeafHash(recordHash);
 }
