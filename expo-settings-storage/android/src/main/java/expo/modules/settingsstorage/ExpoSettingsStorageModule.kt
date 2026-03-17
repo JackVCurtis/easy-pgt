@@ -1,32 +1,38 @@
 package expo.modules.settingsstorage
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.fragment.app.FragmentActivity
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 
 class ExpoSettingsStorageModule : Module() {
   companion object {
     private const val MODULE_NAME = "ExpoSettingsStorage"
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
-    private const val KEY_ALIAS = "expo_settings_storage_key_v1"
+    private const val KEY_ALIAS = "expo_settings_storage_key_v2"
     private const val PREFS_NAME = "expo_settings_storage"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val IV_SIZE_BYTES = 12
     private const val TAG_SIZE_BITS = 128
+    private const val AUTH_VALIDITY_SECONDS = 30
   }
+
+  private val mainHandler = Handler(Looper.getMainLooper())
 
   private var pendingGetPromise: Promise? = null
   private var pendingGetKey: String? = null
@@ -38,8 +44,10 @@ class ExpoSettingsStorageModule : Module() {
     AsyncFunction("setItem") { key: String, value: String ->
       val cipher = Cipher.getInstance(TRANSFORMATION)
       cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
+
       val ciphertext = cipher.doFinal(value.toByteArray(StandardCharsets.UTF_8))
       val payload = encode(cipher.iv, ciphertext)
+
       prefs().edit().putString(key, payload).apply()
     }
 
@@ -56,6 +64,16 @@ class ExpoSettingsStorageModule : Module() {
         return@AsyncFunction
       }
 
+      val fragmentActivity = activity as? FragmentActivity
+      if (fragmentActivity == null) {
+        promise.reject(
+          "ERR_ACTIVITY",
+          "Current activity must be a FragmentActivity to show BiometricPrompt",
+          null
+        )
+        return@AsyncFunction
+      }
+
       if (pendingGetPromise != null) {
         promise.reject("ERR_BUSY", "Another secure read is already in progress", null)
         return@AsyncFunction
@@ -64,15 +82,21 @@ class ExpoSettingsStorageModule : Module() {
       pendingGetPromise = promise
       pendingGetKey = key
 
-      authHelper = DeviceAuthHelper(
-        activity = activity,
-        onSuccess = { finishPendingDecrypt() },
-        onError = { message -> rejectPending("ERR_AUTH", message) }
-      )
+      mainHandler.post {
+        try {
+          authHelper = DeviceAuthHelper(
+            activity = fragmentActivity,
+            onSuccess = { finishPendingDecrypt() },
+            onError = { message -> rejectPending("ERR_AUTH", message) }
+          )
 
-      val launched = authHelper!!.authenticate(force = true)
-      if (!launched) {
-        rejectPending("ERR_AUTH", "Unable to launch authentication")
+          val launched = authHelper!!.authenticate(force = true)
+          if (!launched) {
+            rejectPending("ERR_AUTH", "Unable to launch authentication")
+          }
+        } catch (e: Exception) {
+          rejectPending("ERR_AUTH", "Failed to start authentication: ${e.message}")
+        }
       }
     }
 
@@ -82,12 +106,10 @@ class ExpoSettingsStorageModule : Module() {
 
     OnActivityResult { _, payload ->
       val intent = payload.data
-      val handled = authHelper?.onActivityResult(payload.requestCode, payload.resultCode) ?: false
-      if (handled) {
-        null
-      } else {
-        intent
-      }
+      val handled =
+        authHelper?.onActivityResult(payload.requestCode, payload.resultCode) ?: false
+
+      if (handled) null else intent
     }
   }
 
@@ -104,6 +126,7 @@ class ExpoSettingsStorageModule : Module() {
       }
 
       val (iv, ciphertext) = decode(payload)
+
       val cipher = Cipher.getInstance(TRANSFORMATION)
       cipher.init(
         Cipher.DECRYPT_MODE,
@@ -113,6 +136,10 @@ class ExpoSettingsStorageModule : Module() {
 
       val plaintextBytes = cipher.doFinal(ciphertext)
       promise.resolve(String(plaintextBytes, StandardCharsets.UTF_8))
+    } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+      promise.reject("ERR_AUTH", "User authentication timed out before decrypt", e)
+    } catch (e: AEADBadTagException) {
+      promise.reject("ERR_DECRYPT", "Stored value could not be authenticated", e)
     } catch (e: Exception) {
       promise.reject("ERR_DECRYPT", "Failed to decrypt value", e)
     } finally {
@@ -144,16 +171,26 @@ class ExpoSettingsStorageModule : Module() {
     val keyGenerator =
       KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
 
-    val spec = KeyGenParameterSpec.Builder(
+    val builder = KeyGenParameterSpec.Builder(
       KEY_ALIAS,
       KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
     )
       .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
       .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
       .setKeySize(256)
-      .build()
+      .setUserAuthenticationRequired(true)
 
-    keyGenerator.init(spec)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      builder.setUserAuthenticationParameters(
+        AUTH_VALIDITY_SECONDS,
+        KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+      )
+    } else {
+      @Suppress("DEPRECATION")
+      builder.setUserAuthenticationValidityDurationSeconds(AUTH_VALIDITY_SECONDS)
+    }
+
+    keyGenerator.init(builder.build())
     return keyGenerator.generateKey()
   }
 
@@ -166,8 +203,10 @@ class ExpoSettingsStorageModule : Module() {
   private fun decode(payload: String): Pair<ByteArray, ByteArray> {
     val parts = payload.split(":")
     require(parts.size == 2) { "Invalid encrypted payload" }
+
     val iv = Base64.decode(parts[0], Base64.NO_WRAP)
     val ciphertext = Base64.decode(parts[1], Base64.NO_WRAP)
+
     require(iv.size == IV_SIZE_BYTES) { "Invalid IV length" }
     return iv to ciphertext
   }
