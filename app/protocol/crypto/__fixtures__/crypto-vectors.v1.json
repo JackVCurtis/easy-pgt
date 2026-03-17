@@ -1,0 +1,101 @@
+{
+  "version": "crypto-vectors.v1",
+  "ed25519": {
+    "seedBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+    "publicKeyBase64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+    "secretKeyBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyB5tVYuj+ZU+UB4sRLoqYunkB+FOuaVvtfg45ELrQSWZA=="
+  },
+  "detachedSignatures": [
+    {
+      "name": "endorsement.canonical-payload.v1",
+      "payloadBase64": "AAAAEGVuZG9yc2VtZW50X3R5cGUAAAANYmluZGluZ192YWxpZAAAABVlbmRvcnNlcl9iaW5kaW5nX2hhc2gAAAANaGFzaF9lbmRvcnNlcgAAAAtyZWNvcmRfdHlwZQAAAAtlbmRvcnNlbWVudAAAAA5yZWNvcmRfdmVyc2lvbgAAAAEBAAAAFHN1YmplY3RfYmluZGluZ19oYXNoAAAADGhhc2hfc3ViamVjdA==",
+      "publicKeyBase64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+      "secretKeyBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyB5tVYuj+ZU+UB4sRLoqYunkB+FOuaVvtfg45ELrQSWZA==",
+      "signatureBase64": "y/ZxiT9mMprF0mccwZTOhLEfCRE3goC0ATwGWX0B9uv58PjctDUn9d7rlMwDh7VYpivZXgzPe6iI6+g8KEVlBg=="
+    }
+  ],
+  "x25519": {
+    "participantA": {
+      "secretKeyBase64": "CwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSo=",
+      "publicKeyBase64": "40/dm+KAxRwa8pQJbdsGFVfkIeTjAukxn4b+2FqZ4FM="
+    },
+    "participantB": {
+      "secretKeyBase64": "Y2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYI=",
+      "publicKeyBase64": "ldK1fJ9JsBEG+Vsd1ZPUrBHJp2I77dBvMtXgC9oX6Q4="
+    },
+    "sharedSecretBase64": "iuvrg/7SnOmXuj9xJCXUxF55BOVSHrHlEMAa0VDWfFI="
+  },
+  "sha256DomainSeparated": [
+    {
+      "name": "record-hash-from-canonical-endorsement-payload",
+      "domain": "record_hash_v1",
+      "payloadBase64": "AAAAEGVuZG9yc2VtZW50X3R5cGUAAAANYmluZGluZ192YWxpZAAAABVlbmRvcnNlcl9iaW5kaW5nX2hhc2gAAAANaGFzaF9lbmRvcnNlcgAAAAtyZWNvcmRfdHlwZQAAAAtlbmRvcnNlbWVudAAAAA5yZWNvcmRfdmVyc2lvbgAAAAEBAAAAFHN1YmplY3RfYmluZGluZ19oYXNoAAAADGhhc2hfc3ViamVjdA==",
+      "expectedHex": "5defbfe979658c84482485298bcafbf66e0ad0e4347eb6bbaa69fce603f360a1"
+    },
+    {
+      "name": "merkle-leaf-hash-from-record-hash-bytes",
+      "domain": "merkle_leaf_v1",
+      "payloadHex": "5defbfe979658c84482485298bcafbf66e0ad0e4347eb6bbaa69fce603f360a1",
+      "expectedHex": "1fffeee235d024bacc37293d782e1f34582a29ef2d9713cacd11f37d001dafca"
+    }
+  ],
+  "failClosed": {
+    "identitySeedWrongLength": [
+      {
+        "name": "31-byte seed",
+        "seedBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHw==",
+        "errorSubstring": "Identity seed must be 32 bytes"
+      }
+    ],
+    "verifySignature": [
+      {
+        "name": "malformed signature base64",
+        "payloadBase64": "AAAAEGVuZG9yc2VtZW50X3R5cGUAAAANYmluZGluZ192YWxpZAAAABVlbmRvcnNlcl9iaW5kaW5nX2hhc2gAAAANaGFzaF9lbmRvcnNlcgAAAAtyZWNvcmRfdHlwZQAAAAtlbmRvcnNlbWVudAAAAA5yZWNvcmRfdmVyc2lvbgAAAAEBAAAAFHN1YmplY3RfYmluZGluZ19oYXNoAAAADGhhc2hfc3ViamVjdA==",
+        "signatureBase64": "!!!not-base64!!!",
+        "publicKeyBase64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+        "expected": false
+      },
+      {
+        "name": "signature wrong length",
+        "payloadBase64": "AAAAEGVuZG9yc2VtZW50X3R5cGUAAAANYmluZGluZ192YWxpZAAAABVlbmRvcnNlcl9iaW5kaW5nX2hhc2gAAAANaGFzaF9lbmRvcnNlcgAAAAtyZWNvcmRfdHlwZQAAAAtlbmRvcnNlbWVudAAAAA5yZWNvcmRfdmVyc2lvbgAAAAEBAAAAFHN1YmplY3RfYmluZGluZ19oYXNoAAAADGhhc2hfc3ViamVjdA==",
+        "signatureBase64": "AQID",
+        "publicKeyBase64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+        "expected": false
+      },
+      {
+        "name": "public key wrong length",
+        "payloadBase64": "AAAAEGVuZG9yc2VtZW50X3R5cGUAAAANYmluZGluZ192YWxpZAAAABVlbmRvcnNlcl9iaW5kaW5nX2hhc2gAAAANaGFzaF9lbmRvcnNlcgAAAAtyZWNvcmRfdHlwZQAAAAtlbmRvcnNlbWVudAAAAA5yZWNvcmRfdmVyc2lvbgAAAAEBAAAAFHN1YmplY3RfYmluZGluZ19oYXNoAAAADGhhc2hfc3ViamVjdA==",
+        "signatureBase64": "y/ZxiT9mMprF0mccwZTOhLEfCRE3goC0ATwGWX0B9uv58PjctDUn9d7rlMwDh7VYpivZXgzPe6iI6+g8KEVlBg==",
+        "publicKeyBase64": "AQID",
+        "expected": false
+      }
+    ],
+    "sharedSecretDerivationThrows": [
+      {
+        "name": "local secret malformed base64",
+        "localSecretKeyBase64": "@bad64@",
+        "peerPublicKeyBase64": "ldK1fJ9JsBEG+Vsd1ZPUrBHJp2I77dBvMtXgC9oX6Q4=",
+        "errorSubstring": "Invalid Curve25519 secret key encoding"
+      },
+      {
+        "name": "local secret wrong length",
+        "localSecretKeyBase64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+        "peerPublicKeyBase64": "ldK1fJ9JsBEG+Vsd1ZPUrBHJp2I77dBvMtXgC9oX6Q4=",
+        "errorSubstring": "Invalid Curve25519 secret key encoding"
+      },
+      {
+        "name": "peer key wrong length",
+        "localSecretKeyBase64": "CwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSo=",
+        "peerPublicKeyBase64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+        "errorSubstring": "Invalid public key encoding"
+      }
+    ],
+    "hexDecodeThrows": [
+      {
+        "name": "odd-length hex payload",
+        "hex": "abc",
+        "errorSubstring": "Expected an even-length hex string"
+      }
+    ]
+  }
+}
