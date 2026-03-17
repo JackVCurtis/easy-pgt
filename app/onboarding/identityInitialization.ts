@@ -1,5 +1,21 @@
 import type { PermissionCheckResult } from '@/app/onboarding/bluetoothPermission';
 
+
+function isSecureStoreAuthenticationError(message: string): boolean {
+  return (
+    message.includes('authentication') ||
+    message.includes('authenticated') ||
+    message.includes('not authenticated') ||
+    message.includes('user canceled') ||
+    message.includes('user cancelled') ||
+    message.includes('cancel') ||
+    message.includes('biometric') ||
+    message.includes('passcode') ||
+    message.includes('device locked') ||
+    message.includes('interaction not allowed')
+  );
+}
+
 export function mapIdentityInitializationFailure(error: unknown): PermissionCheckResult {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
 
@@ -7,6 +23,13 @@ export function mapIdentityInitializationFailure(error: unknown): PermissionChec
     return {
       status: 'blocked',
       errorMessage: 'Stored keypair appears corrupted. Retry initialization.',
+    };
+  }
+
+  if (isSecureStoreAuthenticationError(message)) {
+    return {
+      status: 'denied',
+      errorMessage: 'Unlock your device and approve secure storage access, then retry.',
     };
   }
 
