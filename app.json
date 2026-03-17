@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "comrades",
+    "name": "Comrades",
     "slug": "comrades",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -88,7 +88,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a486d059-e2f4-4770-9900-8a5c66961613"
+        "projectId": "ab236ade-cbb8-4c43-9ac0-b6e3206a0f52"
       }
     },
     "owner": "jack.v.curtis"
