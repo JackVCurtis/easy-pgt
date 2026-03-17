@@ -78,6 +78,18 @@ describe('protocol crypto wrapper', () => {
     expect(verifySignature(fixtureRecord, signature, 'not-a-valid-public-key')).toBe(false);
   });
 
+  it('throws coded errors for malformed secret keys when signing', () => {
+    expect(() => signRecord(fixtureRecord, 'not-a-valid-secret-key')).toThrow(
+      'CRYPTO_INVALID_ED25519_SECRET_KEY: Invalid Ed25519 secret key encoding'
+    );
+  });
+
+  it('returns false for malformed signature input during verification', () => {
+    const signer = generateIdentityKeypair({ seed: identitySeed });
+
+    expect(verifySignature(fixtureRecord, 'not-a-valid-signature', signer.publicKey)).toBe(false);
+  });
+
   it('derives identical shared secrets for opposite peers and fixed fixtures', () => {
     const participantA = generateEphemeralKeypair({
       secretKey: Uint8Array.from(Array.from({ length: 32 }, (_, index) => index + 11)),

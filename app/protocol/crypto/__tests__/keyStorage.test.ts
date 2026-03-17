@@ -25,12 +25,27 @@ describe('secure key storage', () => {
 
     await adapter.setItem('pgt.identity.keypair.v1', JSON.stringify({ version: 1, publicKey: 'bad', secretKey: 'bad' }));
 
-    await expect(storage.loadIdentityKeypair()).rejects.toThrow('Stored identity keypair is corrupted');
+    await expect(storage.loadIdentityKeypair()).rejects.toThrow('KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted');
 
     const keypair = generateIdentityKeypair({ seed: Uint8Array.from(Array.from({ length: 32 }, (_, i) => i + 1)) });
     await storage.saveIdentityKeypair({ version: 1, publicKey: keypair.publicKey, secretKey: keypair.secretKey });
     await storage.deleteIdentityKeypair();
 
     await expect(storage.loadIdentityKeypair()).resolves.toBeNull();
+  });
+
+  it('returns contract error codes when persisted payload is malformed', async () => {
+    const adapter = createInMemorySecureStoreAdapter();
+    const storage = createSecureKeyStorage(adapter);
+
+    await adapter.setItem('pgt.identity.keypair.v1', 'not-json');
+    await expect(storage.loadIdentityKeypair()).rejects.toThrow(
+      'KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted'
+    );
+
+    await adapter.setItem('pgt.identity.keypair.v1', JSON.stringify({ version: 1, publicKey: 'bad', secretKey: 'bad' }));
+    await expect(storage.loadIdentityKeypair()).rejects.toThrow(
+      'KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted'
+    );
   });
 });
