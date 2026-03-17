@@ -13,6 +13,7 @@ export interface ProximityNfcPort {
 }
 
 export interface ProximityBlePort {
+  getLocalServiceUuid(): Promise<string>;
   startAdvertising(serviceUuid: string): Promise<void>;
   stopAdvertising(): Promise<void>;
   scanForService(serviceUuid: string, timeoutMs: number): Promise<ProximityBleDevice | null>;

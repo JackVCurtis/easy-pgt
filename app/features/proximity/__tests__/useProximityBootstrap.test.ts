@@ -37,6 +37,7 @@ const mockCreateProximitySessionUuid = jest.mocked(createProximitySessionUuid);
 
 function createMockBlePort(): jest.Mocked<ProximityBlePort> {
   return {
+    getLocalServiceUuid: jest.fn(async () => '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7'),
     startAdvertising: jest.fn(async () => undefined),
     stopAdvertising: jest.fn(async () => undefined),
     scanForService: jest.fn(async () => ({ id: 'device-1', name: 'device' })),
@@ -57,7 +58,7 @@ describe('useProximityBootstrap', () => {
     const { result } = renderHook(() => useProximityBootstrap({ ble }));
 
     await act(async () => {
-      await result.current.prepareWriterPayload('a'.repeat(64), '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
+      await result.current.prepareWriterPayload('a'.repeat(64));
     });
 
     expect(result.current.bootstrapPayload).not.toBeNull();
@@ -73,7 +74,7 @@ describe('useProximityBootstrap', () => {
     const { result } = renderHook(() => useProximityBootstrap({ ble }));
 
     await act(async () => {
-      await result.current.prepareWriterPayload('a'.repeat(64), '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
+      await result.current.prepareWriterPayload('a'.repeat(64));
     });
 
     await act(async () => {
@@ -104,7 +105,7 @@ describe('useProximityBootstrap', () => {
     const { result } = renderHook(() => useProximityBootstrap({ ble }));
 
     await act(async () => {
-      await result.current.prepareWriterPayload('a'.repeat(64), '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
+      await result.current.prepareWriterPayload('a'.repeat(64));
     });
 
     const payload = result.current.bootstrapPayload!;
@@ -142,7 +143,7 @@ describe('useProximityBootstrap', () => {
     const { result } = renderHook(() => useProximityBootstrap({ ble }));
 
     await act(async () => {
-      await result.current.prepareWriterPayload('a'.repeat(64), '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7');
+      await result.current.prepareWriterPayload('a'.repeat(64));
     });
 
     await act(async () => {
@@ -157,6 +158,22 @@ describe('useProximityBootstrap', () => {
 
     expect(result.current.state.status).toBe('failed');
     expect(result.current.state.failureReason).toBe('SCAN_TIMEOUT_OR_DEVICE_NOT_FOUND');
+  });
+
+
+  it('fails with explicit reason when local BLE service UUID is unavailable', async () => {
+    const ble = createMockBlePort();
+    ble.getLocalServiceUuid.mockRejectedValueOnce(new Error('device uuid unavailable'));
+    const { result } = renderHook(() => useProximityBootstrap({ ble }));
+
+    await act(async () => {
+      await result.current.prepareWriterPayload('a'.repeat(64));
+    });
+
+    expect(result.current.bootstrapPayload).toBeNull();
+    expect(result.current.state.status).toBe('failed');
+    expect(result.current.state.failureReason).toBe('DEVICE_UUID_UNAVAILABLE');
+    expect(ble.getLocalServiceUuid).toHaveBeenCalledTimes(1);
   });
 
   it('cleans up BLE sessions on reset and unmount', async () => {

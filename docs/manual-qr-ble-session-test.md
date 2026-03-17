@@ -24,12 +24,13 @@ Not implemented here: Merkle root compare, subtree reconciliation, record transf
 ## Developer test flow
 
 1. Open **Handshake** tab and scroll to **Developer QR → BLE bootstrap test** panel.
-2. On writer device, press **Generate QR bootstrap**.
-3. Show the generated QR code on the writer device.
-4. On reader device, grant camera permission if prompted.
-5. Use the in-app QR scanner to scan the writer payload.
-6. Press **Validate + connect + authenticate BLE session**.
-7. Confirm final status is `session_authenticated`.
+2. On writer device, press **Generate QR bootstrap**. The app resolves the BLE service UUID from device/runtime state (not user input).
+3. In dev mode, inspect the panel's debug bootstrap JSON and confirm `bluetooth_service_uuid` matches the device-derived value.
+4. Show the generated QR code on the writer device.
+5. On reader device, grant camera permission if prompted.
+6. Use the in-app QR scanner to scan the writer payload.
+7. Press **Start BLE discovery/connect**.
+8. Confirm final status is `session_authenticated` and that scan/connect diagnostics reference the same UUID from the bootstrap payload.
 
 ## Expected success path
 
@@ -39,6 +40,7 @@ Not implemented here: Merkle root compare, subtree reconciliation, record transf
 
 - Tampered payload field => bootstrap validation fails before BLE auth.
 - Service UUID mismatch => `failed` with `service_uuid_mismatch`.
+- Device UUID unavailable during generation => `failed` with `DEVICE_UUID_UNAVAILABLE`.
 - Session UUID mismatch => `failed` with `session_uuid_mismatch`.
 - Session proof mismatch => `failed` with `session_confirmation_mismatch`.
 - Camera permission denied => `failed` with `camera_permission_denied` before BLE progression.
