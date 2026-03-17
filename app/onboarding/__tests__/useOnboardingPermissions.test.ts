@@ -225,6 +225,36 @@ describe('useOnboardingPermissions', () => {
     expect(result.current.isReady).toBe(true);
   });
 
+
+
+  it('surfaces unlock guidance when identity init fails due to authentication state', async () => {
+    mockGetOrCreateIdentityKeypair.mockRejectedValueOnce(new Error('Authentication required: device is locked'));
+
+    const { result } = renderHook(() =>
+      useOnboardingPermissions({
+        camera: {
+          currentPermission: createCameraResult(true, true),
+          requestPermission: jest.fn(async () => createCameraResult(true, true)),
+        },
+        bluetooth: {
+          checkReadiness: jest.fn(async () => ({ status: 'granted' })),
+        },
+        secureStore: {
+          checkReadiness: jest.fn(async () => ({ status: 'granted' })),
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.steps.initializing_keys.status).toBe('denied');
+    });
+
+    expect(result.current.terminalState).toBe('blocked_by_key_init_failure');
+    expect(result.current.steps.initializing_keys.errorMessage).toBe(
+      'Unlock your device and approve secure storage access, then retry.'
+    );
+  });
+
   it('maps key initialization failure then recovers on retry', async () => {
     mockGetOrCreateIdentityKeypair
       .mockRejectedValueOnce(new Error('Secure storage unavailable'))

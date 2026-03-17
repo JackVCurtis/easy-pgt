@@ -21,4 +21,19 @@ describe('identity initialization failure mapping', () => {
       errorMessage: 'OS denied secure key operations. Review permissions and retry.',
     });
   });
+
+  it('maps auth-required errors to unlock guidance', () => {
+    expect(mapIdentityInitializationFailure(new Error('Authentication required for keychain item'))).toEqual({
+      status: 'denied',
+      errorMessage: 'Unlock your device and approve secure storage access, then retry.',
+    });
+  });
+
+  it('maps auth-canceled errors to unlock guidance', () => {
+    expect(mapIdentityInitializationFailure(new Error('User canceled authentication prompt'))).toEqual({
+      status: 'denied',
+      errorMessage: 'Unlock your device and approve secure storage access, then retry.',
+    });
+  });
+
 });

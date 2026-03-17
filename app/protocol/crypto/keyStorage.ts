@@ -4,6 +4,12 @@ import { generateIdentityKeypair } from './crypto';
 import { decodeBase64 } from './encoding';
 
 const DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY = 'pgt.identity.keypair.v1';
+const IDENTITY_KEYPAIR_AUTH_PROMPT = 'Unlock your device to access your Comrades identity keys.';
+
+const IDENTITY_KEYPAIR_AUTH_OPTIONS: SecureStore.SecureStoreOptions = {
+  requireAuthentication: true,
+  authenticationPrompt: IDENTITY_KEYPAIR_AUTH_PROMPT,
+};
 
 const KEY_STORAGE_CORRUPTED_ERROR_MESSAGE =
   'KEY_STORAGE_CORRUPTED_IDENTITY_KEYPAIR: Stored identity keypair is corrupted';
@@ -49,12 +55,15 @@ function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is S
 }
 
 export function createExpoSecureStoreAdapter(): SecureStoreAdapter {
+  const optionsForKey = (key: string): SecureStore.SecureStoreOptions | undefined =>
+    key === DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY ? IDENTITY_KEYPAIR_AUTH_OPTIONS : undefined;
+
   return {
     async getItem(key: string) {
-      return SecureStore.getItemAsync(key);
+      return SecureStore.getItemAsync(key, optionsForKey(key));
     },
     async setItem(key: string, value: string) {
-      await SecureStore.setItemAsync(key, value);
+      await SecureStore.setItemAsync(key, value, optionsForKey(key));
     },
     async deleteItem(key: string) {
       await SecureStore.deleteItemAsync(key);
