@@ -83,7 +83,7 @@ function buildTimeline(steps: Record<OnboardingPermissionStepKey, { status: keyo
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { orderedSteps, grantedCount, totalCount, isReady, retryStep, steps } = useOnboardingPermissions();
+  const { orderedSteps, grantedCount, totalCount, isReady, retryStep, steps, terminalState } = useOnboardingPermissions();
   const timeline = buildTimeline(steps);
 
   const handleContinue = async () => {
@@ -101,9 +101,11 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Comrades</Text>
       <Text style={styles.body}>
-        Confirm permissions before starting handshake flows to avoid interruptions.
+        Confirm required permissions and secure key initialization before starting handshake flows.
       </Text>
       <Text style={styles.progress}>Permissions ready: {grantedCount}/{totalCount}</Text>
+      <Text style={styles.progress}>Security status: {terminalState}</Text>
+      {!isReady ? <Text style={styles.errorText}>Skip is unavailable because this is a hard security requirement.</Text> : null}
 
       <View style={styles.checklist}>
         {timeline.map((entry) => (

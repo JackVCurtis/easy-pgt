@@ -50,6 +50,7 @@ describe('useOnboardingPermissions', () => {
     expect(callOrder).toEqual(['camera', 'bluetooth', 'secureStore', 'initializing_keys']);
     expect(result.current.totalCount).toBe(4);
     expect(result.current.isReady).toBe(true);
+    expect(result.current.terminalState).toBe('ready_to_continue');
   });
 
   it('marks camera as blocked when permission cannot be requested again and exposes retry', async () => {
@@ -80,7 +81,9 @@ describe('useOnboardingPermissions', () => {
       expect(result.current.steps.camera.status).toBe('blocked');
     });
 
-    expect(result.current.steps.camera.errorMessage).toContain('Camera');
+    expect(result.current.terminalState).toBe('blocked_by_permissions');
+    expect(result.current.steps.camera.errorMessage).toContain('Camera access is required');
+    expect(result.current.steps.camera.errorMessage).toContain('Settings');
 
     await act(async () => {
       await result.current.retryStep('camera');
@@ -115,9 +118,43 @@ describe('useOnboardingPermissions', () => {
       expect(result.current.steps.bluetooth.status).toBe('denied');
     });
 
+    expect(result.current.terminalState).toBe('blocked_by_permissions');
     expect(result.current.steps.bluetooth.errorMessage).toBe('Bluetooth permission denied by the OS.');
     expect(result.current.steps.initializing_keys.status).toBe('idle');
     expect(result.current.grantedCount).toBe(1);
+  });
+
+
+
+  it('adds required-reason guidance for blocked bluetooth permissions', async () => {
+    const { result } = renderHook(() =>
+      useOnboardingPermissions({
+        camera: {
+          currentPermission: createCameraResult(true, true),
+          requestPermission: jest.fn(async () => createCameraResult(true, true)),
+        },
+        bluetooth: {
+          checkReadiness: jest.fn(async () => ({
+            status: 'blocked',
+            errorMessage: 'Bluetooth is unavailable on this device.',
+          })),
+        },
+        secureStore: {
+          checkReadiness: jest.fn(async () => ({ status: 'granted' })),
+        },
+        identity: {
+          initializeKeypair: jest.fn(async () => ({ status: 'granted' })),
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.steps.bluetooth.status).toBe('blocked');
+    });
+
+    expect(result.current.steps.bluetooth.errorMessage).toContain('Bluetooth access is required');
+    expect(result.current.steps.bluetooth.errorMessage).toContain('Settings');
+    expect(result.current.terminalState).toBe('blocked_by_permissions');
   });
 
   it('maps identity initialization failures and allows retrying initialization', async () => {
@@ -151,6 +188,7 @@ describe('useOnboardingPermissions', () => {
       expect(result.current.steps.initializing_keys.status).toBe('blocked');
     });
 
+    expect(result.current.terminalState).toBe('blocked_by_key_init_failure');
     expect(result.current.steps.initializing_keys.errorMessage).toBe('Secure key storage is unavailable on this device.');
 
     await act(async () => {
