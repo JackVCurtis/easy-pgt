@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoSettingsStorageModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.settingsstorage.ExpoSettingsStorageModule"]
+  }
+}
