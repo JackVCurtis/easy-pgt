@@ -1,23 +1,9 @@
 import type { PermissionCheckResult } from '@/app/onboarding/bluetoothPermission';
-
-
-function isSecureStoreAuthenticationError(message: string): boolean {
-  return (
-    message.includes('authentication') ||
-    message.includes('authenticated') ||
-    message.includes('not authenticated') ||
-    message.includes('user canceled') ||
-    message.includes('user cancelled') ||
-    message.includes('cancel') ||
-    message.includes('biometric') ||
-    message.includes('passcode') ||
-    message.includes('device locked') ||
-    message.includes('interaction not allowed')
-  );
-}
+import { classifySecureStorageError } from '@/app/security/secureStorageErrors';
 
 export function mapIdentityInitializationFailure(error: unknown): PermissionCheckResult {
-  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  const classification = classifySecureStorageError(error);
+  const { message } = classification;
 
   if (message.includes('corrupt')) {
     return {
@@ -26,7 +12,7 @@ export function mapIdentityInitializationFailure(error: unknown): PermissionChec
     };
   }
 
-  if (message.includes('invalidated') || message.includes('unreadable and was cleared')) {
+  if (classification.isInvalidated) {
     return {
       status: 'blocked',
       errorMessage:
@@ -34,7 +20,7 @@ export function mapIdentityInitializationFailure(error: unknown): PermissionChec
     };
   }
 
-  if (isSecureStoreAuthenticationError(message)) {
+  if (classification.isAuthenticationRelated) {
     return {
       status: 'denied',
       errorMessage: 'Unlock your device and approve secure storage access, then retry.',

@@ -3,8 +3,9 @@ import nacl from 'tweetnacl';
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
 import {
   createExpoSecureStoreAdapter,
+  readSecureStoreItemOrClearOnInvalidation,
   type SecureStoreAdapter,
-} from '@/app/security/secureStorage';
+} from '@/app/security/secureStorageContract';
 import { decodeBase64, encodeBase64, utf8Decode, utf8Encode } from '@/app/utils/bytes';
 
 import { readAppStateSnapshot, replaceAppStateSnapshot, type AppStateDto } from './appState';
@@ -97,7 +98,7 @@ export async function hydrateSecureAppState(options: HydrateSecureAppStateOption
   const getEncryptionKey = options.getEncryptionKey ?? getOrCreateAppDataEncryptionKey;
   const hydrateState = options.hydrateState ?? replaceAppStateSnapshot;
 
-  const storedPayload = await adapter.getItem(APP_STATE_SECURE_PAYLOAD_STORAGE_KEY);
+  const storedPayload = await readSecureStoreItemOrClearOnInvalidation(adapter, APP_STATE_SECURE_PAYLOAD_STORAGE_KEY);
 
   if (!storedPayload) {
     return;

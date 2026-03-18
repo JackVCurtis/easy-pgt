@@ -1,7 +1,11 @@
-import SettingsStorage from 'expo-settings-storage';
-
 import { generateIdentityKeypair } from './crypto';
 import { decodeBase64 } from './encoding';
+import {
+  createExpoSecureStoreAdapter,
+  createInMemorySecureStoreAdapter,
+  readSecureStoreItemOrClearOnInvalidation,
+  type SecureStoreAdapter,
+} from '@/app/security/secureStorageContract';
 
 const DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY = 'pgt.identity.keypair.v1';
 const KEY_STORAGE_CORRUPTED_ERROR_MESSAGE =
@@ -20,12 +24,6 @@ export interface SecureKeyStorage {
   saveIdentityKeypair(keypair: StoredIdentityKeypair): Promise<void>;
   deleteIdentityKeypair(): Promise<void>;
 }
-
-export type SecureStoreAdapter = {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  deleteItem(key: string): Promise<void>;
-};
 
 function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is StoredIdentityKeypair {
   if (!candidate || typeof candidate !== 'object') {
@@ -49,45 +47,7 @@ function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is S
   }
 }
 
-export function createExpoSecureStoreAdapter(): SecureStoreAdapter {
-  return {
-    async getItem(key: string) {
-      try {
-        return await SettingsStorage.getItem(key);
-      } catch (error) {
-        const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
-        if (message.includes('invalidated')) {
-          await SettingsStorage.deleteItem(key);
-          throw new Error(KEY_STORAGE_INVALIDATED_ERROR_MESSAGE);
-        }
-
-        throw error;
-      }
-    },
-    async setItem(key: string, value: string) {
-      await SettingsStorage.setItem(key, value);
-    },
-    async deleteItem(key: string) {
-      await SettingsStorage.deleteItem(key);
-    },
-  };
-}
-
-export function createInMemorySecureStoreAdapter(initialData: Record<string, string> = {}): SecureStoreAdapter {
-  const store = new Map<string, string>(Object.entries(initialData));
-
-  return {
-    async getItem(key: string) {
-      return store.has(key) ? store.get(key)! : null;
-    },
-    async setItem(key: string, value: string) {
-      store.set(key, value);
-    },
-    async deleteItem(key: string) {
-      store.delete(key);
-    },
-  };
-}
+export { createExpoSecureStoreAdapter, createInMemorySecureStoreAdapter };
 
 export function createSecureKeyStorage(
   adapter: SecureStoreAdapter = createExpoSecureStoreAdapter(),
@@ -95,7 +55,11 @@ export function createSecureKeyStorage(
 ): SecureKeyStorage {
   return {
     async loadIdentityKeypair() {
-      const raw = await adapter.getItem(storageKey);
+      const raw = await readSecureStoreItemOrClearOnInvalidation(
+        adapter,
+        storageKey,
+        KEY_STORAGE_INVALIDATED_ERROR_MESSAGE
+      );
       if (!raw) {
         return null;
       }
