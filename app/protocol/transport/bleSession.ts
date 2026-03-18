@@ -1,7 +1,8 @@
 import { hashBytes, scalarMultSharedSecret } from '../crypto/crypto';
+import { encodeBase64 } from '../crypto/encoding';
 import type { NfcBootstrapV1 } from './nfcBootstrap.types';
 import type { QrBootstrapV1 } from './qrBootstrap.types';
-import { decodeBase64, encodeBase64 } from './encoding';
+import { decodeBase64WithExpectedLength } from './encoding';
 
 export interface PendingBootstrapSession {
   sessionUuid: string;
@@ -19,8 +20,7 @@ export type SessionValidationResult =
 const encoder = new TextEncoder();
 
 function decodeBase64Fixed32(input: string): Uint8Array | null {
-  const decoded = decodeBase64(input);
-  return decoded && decoded.length === 32 ? decoded : null;
+  return decodeBase64WithExpectedLength(input, 32);
 }
 
 function concat(chunks: Uint8Array[]): Uint8Array {

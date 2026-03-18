@@ -1,4 +1,4 @@
-import { decodeBase64, encodeBase64, encodeHex } from '@/app/protocol/transport';
+import { decodeBase64, decodeBase64WithExpectedLength, encodeBase64, encodeHex } from '@/app/protocol/transport';
 
 describe('transport encoding helpers', () => {
   it('encodes and decodes base64 deterministically', () => {
@@ -11,10 +11,19 @@ describe('transport encoding helpers', () => {
 
   it('supports base64url normalization while decoding', () => {
     expect(decodeBase64('AAECA_r7_P3-_w==')).toEqual(new Uint8Array([0, 1, 2, 3, 250, 251, 252, 253, 254, 255]));
+    expect(decodeBase64('__8')).toEqual(new Uint8Array([255, 255]));
   });
 
   it('rejects invalid base64', () => {
     expect(decodeBase64('%notbase64%')).toBeNull();
+    expect(decodeBase64('AA=A')).toBeNull();
+    expect(decodeBase64('A===')).toBeNull();
+    expect(decodeBase64('AAA==')).toBeNull();
+  });
+
+  it('enforces expected decoded lengths when requested', () => {
+    expect(decodeBase64WithExpectedLength('AAE=', 2)).toEqual(new Uint8Array([0, 1]));
+    expect(decodeBase64WithExpectedLength('AAE=', 3)).toBeNull();
   });
 
   it('encodes hex deterministically', () => {

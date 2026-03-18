@@ -14,6 +14,14 @@ deriveSharedSecret()
 
 ## Encodings
 
+Encoding logic is centralized to avoid drift across protocol modules:
+
+- `app/utils/bytes.ts` is the canonical implementation for base64 and hex byte-string transforms.
+- `app/protocol/crypto/encoding.ts` is the protocol-facing boundary that wraps canonical byte transforms and enforces protocol constraints (for example, expected decoded lengths and DID key parsing).
+- Transport code (`app/protocol/transport/*`) must import encoding helpers from `app/protocol/crypto/encoding.ts` (directly or via `app/protocol/transport/encoding.ts`) instead of reimplementing base64 or hex handling.
+
+This boundary keeps malformed-input handling consistent (padding rules, URL-safe normalization, and fixed-length decode checks) and prevents duplicate implementations from diverging.
+
 - **Identity public keys**: base64-encoded 32-byte Ed25519 public key.
 - **Identity secret keys**: base64-encoded 64-byte Ed25519 secret key.
 - **Ephemeral public keys**: base64-encoded 32-byte Curve25519 public key.

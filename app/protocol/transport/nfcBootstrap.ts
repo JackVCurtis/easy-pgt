@@ -1,11 +1,11 @@
 import { signDetached, verifyDetached } from '../crypto/crypto';
+import { encodeBase64 } from '../crypto/encoding';
 import { VALIDATION_LIMITS } from '../validation/validationLimits';
 import { decodePublicKey, decodeSignature } from '../validation/crypto/signatureDecoding';
 import { canonicalSerialize } from '../validation/crypto/signingPayload';
 import { isValidHash, isValidPublicKey, isValidSignature, isValidUUID } from '../validation/formatValidators';
 
 import { canonicalSerializeNfcBootstrap } from './nfcBootstrap.serialization';
-import { encodeBase64 } from './encoding';
 import type {
   DecodedNfcBootstrapResult,
   NfcBootstrapV1,

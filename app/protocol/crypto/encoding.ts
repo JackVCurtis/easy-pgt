@@ -1,6 +1,6 @@
 import bs58 from 'bs58';
 
-import { concatBytes, decodeBase64 as decodeBase64Bytes, encodeBase64 as encodeBase64Bytes } from '@/app/utils/bytes';
+import { concatBytes, decodeBase64 as decodeBase64Bytes, encodeBase64 as encodeBase64Bytes, encodeHex as encodeHexBytes } from '@/app/utils/bytes';
 
 const ED25519_MULTICODEC_PREFIX = new Uint8Array([0xed, 0x01]);
 
@@ -22,17 +22,25 @@ export function encodeBase64(bytes: Uint8Array): string {
   return encodeBase64Bytes(bytes);
 }
 
-export function decodeBase64(input: string, expectedLength: number): Uint8Array | null {
+export function decodeBase64(input: string, expectedLength?: number): Uint8Array | null {
   if (!input || input.length === 0) {
     return null;
   }
 
   const decoded = decodeBase64Bytes(input);
-  if (!decoded || decoded.length !== expectedLength) {
+  if (!decoded) {
+    return null;
+  }
+
+  if (expectedLength !== undefined && decoded.length !== expectedLength) {
     return null;
   }
 
   return decoded;
+}
+
+export function encodeHex(bytes: Uint8Array): string {
+  return encodeHexBytes(bytes);
 }
 
 function decodeDidKeyPublicKey(input: string): Uint8Array | null {

@@ -46,9 +46,23 @@ export function compareBytes(left: Uint8Array, right: Uint8Array): number {
 
 function normalizeBase64(input: string): string {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = normalized.length % 4;
 
-  return padding === 0 ? normalized : `${normalized}${'='.repeat(4 - padding)}`;
+  if (!/^[A-Za-z0-9+/=]+$/.test(normalized)) {
+    return '';
+  }
+
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) {
+    return '';
+  }
+
+  const remainder = normalized.length % 4;
+  const hasExplicitPadding = normalized.includes('=');
+
+  if (remainder === 1 || (hasExplicitPadding && remainder !== 0)) {
+    return '';
+  }
+
+  return remainder === 0 ? normalized : `${normalized}${'='.repeat(4 - remainder)}`;
 }
 
 export function encodeBase64(bytes: Uint8Array): string {
@@ -74,7 +88,7 @@ export function decodeBase64(input: string): Uint8Array | null {
   }
 
   const normalized = normalizeBase64(input);
-  if (normalized.length % 4 !== 0) {
+  if (!normalized || normalized.length % 4 !== 0) {
     return null;
   }
 
@@ -92,6 +106,10 @@ export function decodeBase64(input: string): Uint8Array | null {
     const v2 = BASE64_LOOKUP[c2];
     const v3 = c3 === '=' ? 0 : BASE64_LOOKUP[c3.charCodeAt(0)];
     const v4 = c4 === '=' ? 0 : BASE64_LOOKUP[c4.charCodeAt(0)];
+
+    if (c3 === '=' && c4 !== '=') {
+      return null;
+    }
 
     if (v1 < 0 || v2 < 0 || (c3 !== '=' && v3 < 0) || (c4 !== '=' && v4 < 0)) {
       return null;
@@ -114,6 +132,12 @@ export function decodeBase64(input: string): Uint8Array | null {
   }
 
   return output;
+}
+
+export function encodeHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export function hexToBytes(hex: string): Uint8Array {
