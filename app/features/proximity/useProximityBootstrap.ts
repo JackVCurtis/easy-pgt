@@ -134,7 +134,7 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
     }
   };
 
-  const ingestScannedBootstrap = async (scannedPayload: string, expectedSignerPublicKey: string) => {
+  const ingestScannedBootstrap = async (scannedPayload: string, expectedSignerPublicKey: string): Promise<boolean> => {
     dispatch({ type: 'set_status', status: 'bootstrap_scanned' });
     pushDiagnosticEvent({ source: 'qr', action: 'scan_start', detail: 'QR payload scanned; decoding and validating.' });
 
@@ -145,7 +145,7 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
         setDiagnostic(`Bootstrap decode failed: ${reason}`);
         pushDiagnosticEvent({ source: 'qr', action: 'scan_invalid', detail: reason });
         dispatch({ type: 'failed', reason });
-        return;
+        return false;
       }
 
       const signerPublicKey = expectedSignerPublicKey || toBase64(ensureLocalKeys().signer.publicKey);
@@ -155,7 +155,7 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
         setDiagnostic(`Bootstrap validation failed: ${reason}`);
         pushDiagnosticEvent({ source: 'qr', action: 'scan_invalid', detail: reason });
         dispatch({ type: 'failed', reason });
-        return;
+        return false;
       }
 
       const pending = createPendingBootstrapSession(decoded.payload);
@@ -163,8 +163,10 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       setDiagnostic('QR bootstrap validated. Ready for BLE discovery/connect.');
       pushDiagnosticEvent({ source: 'qr', action: 'scan_valid', detail: 'Signed QR payload validated and staged.' });
       dispatch({ type: 'set_status', status: 'bootstrap_validated' });
+      return true;
     } catch (error) {
       failWithMappedError(error, 'Bootstrap payload scan failed', 'qr');
+      return false;
     }
   };
 

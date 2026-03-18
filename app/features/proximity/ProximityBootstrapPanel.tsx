@@ -103,8 +103,11 @@ export function ProximityBootstrapPanel() {
       <ProximityQrScanner
         enabled={Boolean(bootstrapDisplayString) || state.status === 'failed' || state.status === 'idle'}
         onPermissionDenied={handleCameraPermissionDenied}
-        onScanned={(raw) => {
-          void ingestScannedBootstrap(raw, localSignerPublicKeyBase64);
+        onScanned={async (raw) => {
+          const didValidateBootstrap = await ingestScannedBootstrap(raw, localSignerPublicKeyBase64);
+          if (didValidateBootstrap) {
+            void startBleDiscoveryConnect();
+          }
         }}
       />
 

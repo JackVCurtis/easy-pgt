@@ -66,6 +66,7 @@ export function HandshakeContainer() {
     () => ['bootstrap_preparing', 'bootstrap_scanned', 'ble_scanning', 'ble_connecting', 'session_authenticating'].includes(state.status),
     [state.status]
   );
+  const isHandshakeComplete = state.status === 'session_authenticated';
 
   const failureMessage = getFailureMessage(state);
 
@@ -109,11 +110,15 @@ export function HandshakeContainer() {
           <ProximityQrScanner
             enabled={!isWorking}
             onPermissionDenied={handleCameraPermissionDenied}
-            onScanned={(scannedRaw) => {
+            onScanned={async (scannedRaw) => {
               const expectedSignerPublicKey = localSignerPublicKeyBase64;
-              void ingestScannedBootstrap(scannedRaw, expectedSignerPublicKey).then(() => {
+              const didValidateBootstrap = await ingestScannedBootstrap(scannedRaw, expectedSignerPublicKey);
+
+              // BLE authentication is the current completion boundary for handshake orchestration.
+              if (didValidateBootstrap) {
+                // Merkle log sync is intentionally out-of-scope for this refactor; do not trigger any sync stage here.
                 void startBleDiscoveryConnect();
-              });
+              }
             }}
           />
           <AppButton label="Back" onPress={() => void restart()} disabled={isWorking} />
@@ -128,6 +133,7 @@ export function HandshakeContainer() {
         ) : (
           <ThemedText>Handshake diagnostics will appear here once a handshake is initiated.</ThemedText>
         )}
+        {isHandshakeComplete ? <ThemedText type="defaultSemiBold">Handshake complete: BLE session authenticated.</ThemedText> : null}
         <ThemedText>Status: {state.status}</ThemedText>
         {diagnosticEvents.slice(-4).map((event) => (
           <ThemedText key={`${event.at}-${event.source}-${event.action}`} selectable>
