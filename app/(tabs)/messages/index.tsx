@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { TRUST_RELATIONSHIPS } from '@/app/mock-data';
+import { INITIAL_APP_STATE } from '@/app/state/appState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -26,9 +26,13 @@ function buildSignature(message: string) {
 }
 
 export default function MessagesScreen() {
-  const [message, setMessage] = useState('');
-  const [status, setStatus] = useState<string | null>(null);
-  const [senderDistances, setSenderDistances] = useState<string[]>([]);
+  const [message, setMessage] = useState(INITIAL_APP_STATE.messageComposer.draftMessage);
+  const [status, setStatus] = useState<string | null>(
+    INITIAL_APP_STATE.messageComposer.verificationContext.status
+  );
+  const [senderDistances, setSenderDistances] = useState<string[]>(
+    INITIAL_APP_STATE.messageComposer.verificationContext.senderDistances
+  );
 
   const inputTextColor = useThemeColor({}, 'text');
   const inputBackgroundColor = useThemeColor({}, 'surface');
@@ -46,8 +50,8 @@ export default function MessagesScreen() {
 
     setStatus(isSigned ? 'Signature detected and verified.' : 'No signature found.');
     setSenderDistances(
-      TRUST_RELATIONSHIPS.map(
-        (relationship) => `${relationship.counterpartAlias}: ${relationship.trustDepth} hop(s)`
+      INITIAL_APP_STATE.connections.map(
+        (connection) => `${connection.counterpartAlias}: ${connection.trustDepth} hop(s)`
       )
     );
   };

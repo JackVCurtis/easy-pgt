@@ -1,4 +1,4 @@
-import { TRUST_RELATIONSHIPS } from '@/app/mock-data';
+import { INITIAL_APP_STATE } from '@/app/state/appState';
 
 export type Counterparty = {
   id: string;
@@ -13,14 +13,14 @@ export type Counterparty = {
 
 const GENERATED_COUNTERPARTY_NAME = 'Avery Shaw';
 
-const INITIAL_COUNTERPARTIES: Counterparty[] = TRUST_RELATIONSHIPS.map((relationship) => ({
-  id: relationship.id,
-  providedName: relationship.counterpartAlias,
-  localSharedName: relationship.localAlias,
-  trustDepth: relationship.trustDepth,
-  handshakeStatus: relationship.handshakeStatus,
-  publicKey: relationship.trustDepth > 1 ? `pk-${relationship.id}` : undefined,
-  relationshipUuid: relationship.trustDepth > 1 ? `uuid-${relationship.id}` : undefined,
+const INITIAL_COUNTERPARTIES: Counterparty[] = INITIAL_APP_STATE.connections.map((connection) => ({
+  id: connection.id,
+  providedName: connection.counterpartAlias,
+  localSharedName: connection.localAlias,
+  trustDepth: connection.trustDepth,
+  handshakeStatus: connection.handshakeStatus,
+  publicKey: connection.trustDepth > 1 ? `pk-${connection.id}` : undefined,
+  relationshipUuid: connection.trustDepth > 1 ? `uuid-${connection.id}` : undefined,
 }));
 
 let counterpartyStore: Counterparty[] = [...INITIAL_COUNTERPARTIES];
