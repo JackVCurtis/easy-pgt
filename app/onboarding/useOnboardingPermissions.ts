@@ -9,6 +9,7 @@ import {
   type PermissionCheckResult,
 } from '@/app/onboarding/bluetoothPermission';
 import { mapIdentityInitializationFailure } from '@/app/onboarding/identityInitialization';
+import { createSecureStoreReadinessChecker } from '@/app/onboarding/secureStoreReadiness';
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
 import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
 
@@ -184,7 +185,7 @@ export function useOnboardingPermissions(ports: UseOnboardingPermissionsPorts = 
   );
 
   const checkSecureStoreReadiness = useMemo(
-    () => ports.secureStore?.checkReadiness ?? (async (): Promise<PermissionCheckResult> => ({ status: 'granted' })),
+    () => ports.secureStore?.checkReadiness ?? createSecureStoreReadinessChecker(),
     [ports.secureStore?.checkReadiness]
   );
 
