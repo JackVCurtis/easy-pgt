@@ -51,17 +51,17 @@ const STEP_ORDER: OnboardingPermissionStepKey[] = ['camera', 'bluetooth', 'secur
 
 const STEP_LABELS: Record<OnboardingPermissionStepKey, string> = {
   camera: 'Camera',
-  bluetooth: 'Bluetooth',
+  bluetooth: 'Nearby devices',
   secureStore: 'Secure key storage',
 };
 
 const FRIENDLY_FAILURE_COPY: Record<string, string> = {
   CAMERA_PERMISSION_BLOCKED: `Camera access is required for secure QR verification. ${platformSettingsGuidance('camera')}`,
-  BLUETOOTH_PERMISSION_BLOCKED: `Bluetooth access is required for authenticated nearby transport. ${platformSettingsGuidance('bluetooth')}`,
+  BLUETOOTH_PERMISSION_BLOCKED: `Nearby devices access is required for authenticated nearby transport. ${platformSettingsGuidance('nearby devices')}`,
   SECURESTORE_PERMISSION_BLOCKED: `Secure storage access is required to protect identity keys. ${platformSettingsGuidance('secure storage')}`,
 };
 
-function platformSettingsGuidance(target: 'camera' | 'bluetooth' | 'secure storage'): string {
+function platformSettingsGuidance(target: 'camera' | 'nearby devices' | 'secure storage'): string {
   if (Platform.OS === 'ios') {
     return `Open Settings > Comrades > ${target === 'secure storage' ? 'Face ID/Passcode permissions' : target} and allow access.`;
   }

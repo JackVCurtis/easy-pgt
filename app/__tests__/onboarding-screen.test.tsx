@@ -65,6 +65,11 @@ describe('OnboardingScreen', () => {
 
     const { getByText, getByRole } = render(<OnboardingScreen />);
 
+    expect(
+      getByText(
+        'Allow camera and nearby devices access, then confirm secure encryption-key initialization before starting handshake flows.'
+      )
+    ).toBeTruthy();
     expect(getByText('Permissions ready: 2/3')).toBeTruthy();
     expect(getByText('Requesting permissions: Completed')).toBeTruthy();
     expect(getByText('Initializing app data encryption key: Failed')).toBeTruthy();
