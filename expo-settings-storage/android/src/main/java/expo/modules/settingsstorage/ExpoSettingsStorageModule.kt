@@ -43,6 +43,7 @@ class ExpoSettingsStorageModule : Module() {
 
   private var pendingRequest: PendingRequest? = null
   private var authHelper: DeviceAuthHelper? = null
+  private var promptOnlyPromise: Promise? = null
 
   override fun definition() = ModuleDefinition {
     Name(MODULE_NAME)
@@ -65,6 +66,10 @@ class ExpoSettingsStorageModule : Module() {
 
     AsyncFunction("deleteItem") { key: String ->
       prefs().edit().remove(key).apply()
+    }
+
+    AsyncFunction("authenticate") { promise: Promise ->
+      launchStandaloneAuthentication(promise)
     }
 
     OnActivityResult { _, payload ->
@@ -181,6 +186,79 @@ class ExpoSettingsStorageModule : Module() {
     }
   }
 
+  private fun launchStandaloneAuthentication(promise: Promise) {
+    if (pendingRequest != null || promptOnlyPromise != null) {
+      promise.reject("ERR_BUSY", "Another secure storage operation is already in progress", null)
+      return
+    }
+
+    val activity = appContext.currentActivity
+    if (activity == null) {
+      promise.reject("ERR_NO_ACTIVITY", "No foreground activity available", null)
+      return
+    }
+
+    val fragmentActivity = activity as? FragmentActivity
+    if (fragmentActivity == null) {
+      promise.reject(
+        "ERR_ACTIVITY",
+        "Current activity must be a FragmentActivity to show BiometricPrompt",
+        null
+      )
+      return
+    }
+
+    promptOnlyPromise = promise
+    fragmentActivity.runOnUiThread {
+      try {
+        authHelper = DeviceAuthHelper(
+          activity = fragmentActivity,
+          onSuccess = {
+            promptOnlyPromise?.resolve(mapOf("status" to "success"))
+            clearPromptOnly()
+          },
+          onError = { message ->
+            val normalizedStatus =
+              if (message.contains("cancel", ignoreCase = true) ||
+                message.contains("declined", ignoreCase = true) ||
+                message.contains("dismiss", ignoreCase = true)
+              ) {
+                "canceled"
+              } else {
+                "failed"
+              }
+            promptOnlyPromise?.resolve(
+              mapOf(
+                "status" to normalizedStatus,
+                "message" to message
+              )
+            )
+            clearPromptOnly()
+          }
+        )
+
+        val launched = authHelper!!.authenticate(force = true)
+        if (!launched) {
+          promptOnlyPromise?.resolve(
+            mapOf(
+              "status" to "failed",
+              "message" to "Unable to launch authentication"
+            )
+          )
+          clearPromptOnly()
+        }
+      } catch (e: Exception) {
+        promptOnlyPromise?.resolve(
+          mapOf(
+            "status" to "failed",
+            "message" to "Failed to start authentication: ${e.message}"
+          )
+        )
+        clearPromptOnly()
+      }
+    }
+  }
+
   private fun rejectPending(code: String, message: String) {
     pendingRequest?.promise?.reject(code, message, null)
     clearPending()
@@ -188,6 +266,11 @@ class ExpoSettingsStorageModule : Module() {
 
   private fun clearPending() {
     pendingRequest = null
+    authHelper = null
+  }
+
+  private fun clearPromptOnly() {
+    promptOnlyPromise = null
     authHelper = null
   }
 

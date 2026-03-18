@@ -8,6 +8,11 @@ export type SecureStoreAdapter = {
   deleteItem(key: string): Promise<void>;
 };
 
+export type DeviceAuthenticationPromptResult = {
+  status: 'success' | 'canceled' | 'failed';
+  message?: string;
+};
+
 export const SECURE_STORAGE_INVALIDATED_ERROR_MESSAGE =
   'SECURE_STORAGE_AUTH_INVALIDATED: Protected key material became unreadable and was cleared';
 
@@ -23,6 +28,18 @@ export function createExpoSecureStoreAdapter(): SecureStoreAdapter {
       await SettingsStorage.deleteItem(key);
     },
   };
+}
+
+export async function requestDeviceAuthenticationPrompt(): Promise<DeviceAuthenticationPromptResult> {
+  const moduleWithPrompt = SettingsStorage as typeof SettingsStorage & {
+    authenticate?: () => Promise<DeviceAuthenticationPromptResult>;
+  };
+
+  if (typeof moduleWithPrompt.authenticate !== 'function') {
+    return { status: 'success' };
+  }
+
+  return moduleWithPrompt.authenticate();
 }
 
 export function createInMemorySecureStoreAdapter(initialData: Record<string, string> = {}): SecureStoreAdapter {

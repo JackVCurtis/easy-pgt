@@ -1,6 +1,25 @@
-import { unlockGate } from '@/app/security/unlockGate';
+import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
+import { performDeviceAuthentication, unlockGate } from '@/app/security/unlockGate';
+
+jest.mock('@/app/protocol/crypto/appDataEncryptionKey', () => ({
+  getOrCreateAppDataEncryptionKey: jest.fn(),
+}));
+
+jest.mock('@/app/security/secureStorageContract', () => ({
+  requestDeviceAuthenticationPrompt: jest.fn(),
+}));
+
+const mockGetOrCreateAppDataEncryptionKey = jest.mocked(getOrCreateAppDataEncryptionKey);
+const mockRequestDeviceAuthenticationPrompt = jest.mocked(requestDeviceAuthenticationPrompt);
 
 describe('unlockGate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetOrCreateAppDataEncryptionKey.mockResolvedValue('mock-app-data-key');
+    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({ status: 'success' });
+  });
+
   it('authenticates then hydrates state into memory when auth succeeds', async () => {
     const authenticate = jest.fn().mockResolvedValue({ status: 'success' as const });
     const hydrateState = jest.fn().mockResolvedValue();
@@ -40,5 +59,12 @@ describe('unlockGate', () => {
     });
 
     expect(unloadState).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers native authentication prompt before loading app data encryption key', async () => {
+    await expect(performDeviceAuthentication()).resolves.toEqual({ status: 'success' });
+
+    expect(mockRequestDeviceAuthenticationPrompt).toHaveBeenCalledTimes(1);
+    expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(1);
   });
 });

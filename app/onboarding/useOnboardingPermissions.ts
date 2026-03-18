@@ -10,6 +10,7 @@ import {
 } from '@/app/onboarding/bluetoothPermission';
 import { mapIdentityInitializationFailure } from '@/app/onboarding/identityInitialization';
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
 
 export type OnboardingPermissionStepKey = 'camera' | 'bluetooth' | 'secureStore' | 'initializing_keys';
 export type OnboardingTerminalState =
@@ -131,6 +132,15 @@ function createBleReadinessChecker(): (() => Promise<PermissionCheckResult>) {
 
 async function initializeAppDataEncryptionKey(): Promise<PermissionCheckResult> {
   try {
+    const promptResult = await requestDeviceAuthenticationPrompt();
+    if (promptResult.status === 'canceled') {
+      throw new Error(promptResult.message ?? 'User canceled authentication prompt');
+    }
+
+    if (promptResult.status === 'failed') {
+      throw new Error(promptResult.message ?? 'Authentication required: device is locked');
+    }
+
     await getOrCreateAppDataEncryptionKey();
     return { status: 'granted' };
   } catch (error) {

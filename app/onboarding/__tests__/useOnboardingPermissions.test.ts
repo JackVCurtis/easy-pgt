@@ -2,12 +2,18 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { useOnboardingPermissions } from '@/app/onboarding/useOnboardingPermissions';
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
 
 jest.mock('@/app/protocol/crypto/appDataEncryptionKey', () => ({
   getOrCreateAppDataEncryptionKey: jest.fn(),
 }));
 
+jest.mock('@/app/security/secureStorageContract', () => ({
+  requestDeviceAuthenticationPrompt: jest.fn(),
+}));
+
 const mockGetOrCreateAppDataEncryptionKey = jest.mocked(getOrCreateAppDataEncryptionKey);
+const mockRequestDeviceAuthenticationPrompt = jest.mocked(requestDeviceAuthenticationPrompt);
 
 function createCameraResult(granted: boolean, canAskAgain = true) {
   return {
@@ -20,6 +26,7 @@ describe('useOnboardingPermissions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetOrCreateAppDataEncryptionKey.mockResolvedValue('mock-app-data-key');
+    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({ status: 'success' });
   });
 
   it('runs camera, bluetooth, and secure store checks in order and reports progress', async () => {
@@ -248,6 +255,7 @@ describe('useOnboardingPermissions', () => {
       expect(result.current.steps.initializing_keys.status).toBe('granted');
     });
 
+    expect(mockRequestDeviceAuthenticationPrompt).toHaveBeenCalledTimes(1);
     expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(1);
     expect(result.current.terminalState).toBe('ready_to_continue');
     expect(result.current.isReady).toBe(true);
