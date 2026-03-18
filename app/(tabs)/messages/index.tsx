@@ -81,7 +81,7 @@ export default function MessagesScreen() {
       ? message
       : `${message.trimEnd()}\n\n${SIGNATURE_MARKER}\n${buildSignature(message)}`;
 
-    updateComposerState(signedMessage, 'Message signed and copied to clipboard (mock).', senderDistances);
+    updateComposerState(signedMessage, 'Message signed and copied to clipboard.', senderDistances);
   };
 
   return (
