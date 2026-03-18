@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { getRuntimeConnections, INITIAL_APP_STATE } from '@/app/state/appState';
+import {
+  getAllConnections,
+  getMessageComposerState,
+  setDraftMessage,
+  setVerificationContext,
+} from '@/app/state/appState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -26,12 +31,12 @@ function buildSignature(message: string) {
 }
 
 export default function MessagesScreen() {
-  const [message, setMessage] = useState(INITIAL_APP_STATE.messageComposer.draftMessage);
-  const [status, setStatus] = useState<string | null>(
-    INITIAL_APP_STATE.messageComposer.verificationContext.status
-  );
+  const initialComposerState = getMessageComposerState();
+
+  const [message, setMessage] = useState(initialComposerState.draftMessage);
+  const [status, setStatus] = useState<string | null>(initialComposerState.verificationContext.status);
   const [senderDistances, setSenderDistances] = useState<string[]>(
-    INITIAL_APP_STATE.messageComposer.verificationContext.senderDistances
+    initialComposerState.verificationContext.senderDistances
   );
 
   const inputTextColor = useThemeColor({}, 'text');
@@ -41,24 +46,34 @@ export default function MessagesScreen() {
 
   const isSigned = useMemo(() => message.includes(SIGNATURE_MARKER), [message]);
 
+  const updateComposerState = (nextMessage: string, nextStatus: string | null, nextDistances: string[]) => {
+    setMessage(nextMessage);
+    setStatus(nextStatus);
+    setSenderDistances(nextDistances);
+    setDraftMessage(nextMessage);
+    setVerificationContext({
+      status: nextStatus,
+      senderDistances: nextDistances,
+    });
+  };
+
   const verifyMessage = () => {
     if (!message.trim()) {
-      setStatus('Add a message before verifying.');
-      setSenderDistances([]);
+      updateComposerState(message, 'Add a message before verifying.', []);
       return;
     }
 
-    setStatus(isSigned ? 'Signature detected and verified.' : 'No signature found.');
-    setSenderDistances(
-      getRuntimeConnections(INITIAL_APP_STATE).map(
-        (connection) => `${connection.counterpartAlias}: ${connection.trustDepth} hop(s)`
-      )
+    const verificationStatus = isSigned ? 'Signature detected and verified.' : 'No signature found.';
+    const distances = getAllConnections().map(
+      (connection) => `${connection.counterpartAlias}: ${connection.trustDepth} hop(s)`
     );
+
+    updateComposerState(message, verificationStatus, distances);
   };
 
   const signAndCopy = () => {
     if (!message.trim()) {
-      setStatus('Add a message before signing.');
+      updateComposerState(message, 'Add a message before signing.', senderDistances);
       return;
     }
 
@@ -66,8 +81,7 @@ export default function MessagesScreen() {
       ? message
       : `${message.trimEnd()}\n\n${SIGNATURE_MARKER}\n${buildSignature(message)}`;
 
-    setMessage(signedMessage);
-    setStatus('Message signed and copied to clipboard (mock).');
+    updateComposerState(signedMessage, 'Message signed and copied to clipboard (mock).', senderDistances);
   };
 
   return (

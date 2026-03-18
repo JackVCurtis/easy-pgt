@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
-import { addHandshakeCounterparty } from "@/app/handshake/connection-store";
+import { addHandshakeConnection } from "@/app/state/appState";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { AppButton } from "@/components/ui/app-button";
@@ -68,12 +68,12 @@ export default function HandshakeScreen() {
     }
 
     if (exchangeStepIndex >= EXCHANGE_STEPS.length) {
-      const created = addHandshakeCounterparty({
+      const created = addHandshakeConnection({
         localSharedName: nameToShare.trim(),
         contactInfo: contactMethodDraft.trim() || undefined,
       });
 
-      setNewCounterpartyName(created.providedName);
+      setNewCounterpartyName(created.counterpartAlias);
       setStage("complete");
       return;
     }

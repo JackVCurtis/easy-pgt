@@ -2,7 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { getCounterpartyById, updateCounterparty } from '@/app/handshake/connection-store';
+import {
+  getConnectionById,
+  toCounterpartyView,
+  updateConnectionDetails,
+} from '@/app/state/appState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -12,7 +16,14 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function ConnectionDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const counterparty = useMemo(() => (id ? getCounterpartyById(id) : undefined), [id]);
+  const counterparty = useMemo(() => {
+    if (!id) {
+      return undefined;
+    }
+
+    const connection = getConnectionById(id);
+    return connection ? toCounterpartyView(connection) : undefined;
+  }, [id]);
 
   const inputBackgroundColor = useThemeColor({}, 'surface');
   const inputBorderColor = useThemeColor({}, 'border');
@@ -35,7 +46,7 @@ export default function ConnectionDetailsScreen() {
   }
 
   const handleSave = () => {
-    updateCounterparty(counterparty.id, {
+    updateConnectionDetails(counterparty.id, {
       providedName: providedName.trim() || counterparty.providedName,
       contactInfo: contactInfo.trim() || undefined,
     });
