@@ -1,6 +1,10 @@
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
 import { cacheAppDataEncryptionKey, clearCachedAppDataEncryptionKey } from '@/app/security/sessionEncryptionKey';
-import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
+import {
+  authenticateForSecureStorage,
+  clearActiveSecureStorageAuthSession,
+  type SecureStorageAuthSession,
+} from '@/app/security/secureStorageContract';
 import { performDeviceAuthentication, unlockGate } from '@/app/security/unlockGate';
 
 jest.mock('@/app/protocol/crypto/appDataEncryptionKey', () => ({
@@ -8,30 +12,41 @@ jest.mock('@/app/protocol/crypto/appDataEncryptionKey', () => ({
 }));
 
 jest.mock('@/app/security/secureStorageContract', () => ({
-  requestDeviceAuthenticationPrompt: jest.fn(),
+  authenticateForSecureStorage: jest.fn(),
+  mapSecureStorageAuthErrorToRetryable: (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
+  clearActiveSecureStorageAuthSession: jest.fn(),
 }));
 
 const mockGetOrCreateAppDataEncryptionKey = jest.mocked(getOrCreateAppDataEncryptionKey);
-const mockRequestDeviceAuthenticationPrompt = jest.mocked(requestDeviceAuthenticationPrompt);
+const mockAuthenticateForSecureStorage = jest.mocked(authenticateForSecureStorage);
+
+const authSession: SecureStorageAuthSession = {
+  token: 'auth-session-token',
+  authenticatedAtMs: 1,
+  expiresAtMs: Number.MAX_SAFE_INTEGER,
+};
 
 describe('unlockGate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearCachedAppDataEncryptionKey();
+    clearActiveSecureStorageAuthSession();
     mockGetOrCreateAppDataEncryptionKey.mockResolvedValue('mock-app-data-key');
-    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({ status: 'success' });
+    mockAuthenticateForSecureStorage.mockResolvedValue({ status: 'success', session: authSession });
   });
 
   afterEach(() => {
     clearCachedAppDataEncryptionKey();
+    clearActiveSecureStorageAuthSession();
   });
 
   it('authenticates then hydrates state into memory when auth succeeds', async () => {
     const authenticate = jest.fn().mockResolvedValue({
       status: 'success' as const,
       encryptionKey: 'session-encryption-key',
+      authSession,
     });
-    const hydrateState = jest.fn().mockResolvedValue();
+    const hydrateState = jest.fn().mockResolvedValue(undefined);
     const unloadState = jest.fn();
 
     await expect(unlockGate({ authenticate, hydrateState, unloadState })).resolves.toEqual({
@@ -40,7 +55,10 @@ describe('unlockGate', () => {
 
     expect(authenticate).toHaveBeenCalledTimes(1);
     expect(hydrateState).toHaveBeenCalledTimes(1);
-    expect(hydrateState).toHaveBeenCalledWith('session-encryption-key');
+    expect(hydrateState).toHaveBeenCalledWith({
+      encryptionKey: 'session-encryption-key',
+      authSession,
+    });
     expect(unloadState).not.toHaveBeenCalled();
   });
 
@@ -59,7 +77,7 @@ describe('unlockGate', () => {
   });
 
   it('keeps state unloaded and returns locked when hydration fails after auth', async () => {
-    const authenticate = jest.fn().mockResolvedValue({ status: 'success' as const });
+    const authenticate = jest.fn().mockResolvedValue({ status: 'success' as const, authSession });
     const hydrateState = jest.fn().mockRejectedValue(new Error('decrypt failure'));
     const unloadState = jest.fn();
 
@@ -71,17 +89,18 @@ describe('unlockGate', () => {
     expect(unloadState).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers native authentication prompt before loading app data encryption key', async () => {
+  it('creates auth session before loading app data encryption key', async () => {
     await expect(performDeviceAuthentication()).resolves.toEqual({
       status: 'success',
       encryptionKey: 'mock-app-data-key',
+      authSession,
     });
 
-    expect(mockRequestDeviceAuthenticationPrompt).toHaveBeenCalledTimes(1);
-    expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(1);
+    expect(mockAuthenticateForSecureStorage).toHaveBeenCalledTimes(1);
+    expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledWith({ authSession });
   });
 
-  it('reuses cached app-data encryption key without re-prompting device authentication', async () => {
+  it('reuses cached app-data encryption key without secure-storage authentication', async () => {
     cacheAppDataEncryptionKey('cached-session-key');
 
     await expect(performDeviceAuthentication()).resolves.toEqual({
@@ -89,7 +108,7 @@ describe('unlockGate', () => {
       encryptionKey: 'cached-session-key',
     });
 
-    expect(mockRequestDeviceAuthenticationPrompt).not.toHaveBeenCalled();
+    expect(mockAuthenticateForSecureStorage).not.toHaveBeenCalled();
     expect(mockGetOrCreateAppDataEncryptionKey).not.toHaveBeenCalled();
   });
 });

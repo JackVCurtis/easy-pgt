@@ -1,6 +1,12 @@
 import type { PermissionCheckResult } from '@/app/onboarding/bluetoothPermission';
 import { classifySecureStorageError } from '@/app/security/secureStorageErrors';
-import { createExpoSecureStoreAdapter, requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
+import {
+  assertActiveSecureStorageAuthSession,
+  authenticateForSecureStorage,
+  createExpoSecureStoreAdapter,
+  mapSecureStorageAuthErrorToRetryable,
+  type SecureStorageAuthSession,
+} from '@/app/security/secureStorageContract';
 
 const SECURE_STORE_PROBE_KEY = 'comrades.onboarding.secure-store.probe';
 
@@ -33,23 +39,29 @@ function mapAuthenticationPromptFailure(message: string): PermissionCheckResult 
   };
 }
 
-export function createSecureStoreReadinessChecker(): () => Promise<PermissionCheckResult> {
+export function createSecureStoreReadinessChecker(options: {
+  authSession?: SecureStorageAuthSession;
+} = {}): () => Promise<PermissionCheckResult> {
   return async () => {
     const secureStore = createExpoSecureStoreAdapter();
     const probeValue = `${Date.now()}`;
 
     try {
-      const promptResult = await requestDeviceAuthenticationPrompt();
-      if (promptResult.status === 'canceled') {
+      const authResult = await authenticateForSecureStorage();
+
+      if (authResult.status === 'canceled') {
         return {
           status: 'denied',
           errorMessage: 'Device authentication was canceled. Approve secure storage access and retry.',
         };
       }
 
-      if (promptResult.status === 'failed') {
-        return mapAuthenticationPromptFailure(promptResult.message ?? 'Device authentication failed');
+      if (authResult.status === 'failed') {
+        return mapAuthenticationPromptFailure(authResult.message ?? 'Device authentication failed');
       }
+
+      const authSession = options.authSession ?? authResult.session;
+      assertActiveSecureStorageAuthSession(authSession);
 
       await secureStore.setItem(SECURE_STORE_PROBE_KEY, probeValue);
       const recoveredValue = await secureStore.getItem(SECURE_STORE_PROBE_KEY);
@@ -64,8 +76,9 @@ export function createSecureStoreReadinessChecker(): () => Promise<PermissionChe
       return { status: 'granted' };
     } catch (error) {
       const classification = classifySecureStorageError(error);
+      const retryableAuthError = mapSecureStorageAuthErrorToRetryable(error);
 
-      if (classification.isAuthenticationRelated) {
+      if (classification.isAuthenticationRelated || retryableAuthError.message.includes('RETRYABLE')) {
         return {
           status: 'denied',
           errorMessage: 'Unlock your device and approve secure storage access, then retry.',

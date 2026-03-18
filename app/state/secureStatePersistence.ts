@@ -3,6 +3,7 @@ import { generateRandomBytes, openSecretbox, sealSecretbox } from '@/app/protoco
 import {
   createExpoSecureStoreAdapter,
   readSecureStoreItemOrClearOnInvalidation,
+  type SecureStorageAuthSession,
   type SecureStoreAdapter,
 } from '@/app/security/secureStorageContract';
 import { decodeBase64, encodeBase64, utf8Decode, utf8Encode } from '@/app/utils/bytes';
@@ -28,16 +29,18 @@ export type PersistedSecureAppStatePayload = {
 export type PersistSecureAppStateOptions = {
   adapter?: SecureStoreAdapter;
   readAppState?: () => AppStateDto | Record<string, unknown>;
-  getEncryptionKey?: () => Promise<string>;
+  getEncryptionKey?: (options?: { authSession?: SecureStorageAuthSession }) => Promise<string>;
   randomBytes?: (length: number) => Uint8Array;
   now?: () => number;
+  authSession?: SecureStorageAuthSession;
 };
 
 export type HydrateSecureAppStateOptions = {
   adapter?: SecureStoreAdapter;
   encryptionKey?: string;
-  getEncryptionKey?: () => Promise<string>;
+  getEncryptionKey?: (options?: { authSession?: SecureStorageAuthSession }) => Promise<string>;
   hydrateState?: (state: AppStateDto) => void;
+  authSession?: SecureStorageAuthSession;
 };
 
 function assertSecretboxKeyBytes(encodedKey: string): Uint8Array {
@@ -78,7 +81,7 @@ export async function persistSecureAppState(options: PersistSecureAppStateOption
 
   const state = readAppState();
   const serializedStateBytes = utf8Encode(JSON.stringify(state));
-  const keyBytes = assertSecretboxKeyBytes(await getEncryptionKey());
+  const keyBytes = assertSecretboxKeyBytes(await getEncryptionKey({ authSession: options.authSession }));
   const payload = buildPersistedPayload({
     serializedStateBytes,
     keyBytes,
@@ -105,7 +108,9 @@ export async function hydrateSecureAppState(options: HydrateSecureAppStateOption
   }
 
   const payload = parsePersistedPayload(storedPayload);
-  const keyBytes = assertSecretboxKeyBytes(options.encryptionKey ?? (await getEncryptionKey()));
+  const keyBytes = assertSecretboxKeyBytes(
+    options.encryptionKey ?? (await getEncryptionKey({ authSession: options.authSession }))
+  );
   const nonceBytes = decodeBase64(payload.nonce);
   const ciphertextBytes = decodeBase64(payload.ciphertext);
 

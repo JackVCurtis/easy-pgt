@@ -1,17 +1,27 @@
 import { createSecureStoreReadinessChecker } from '@/app/onboarding/secureStoreReadiness';
 import {
+  authenticateForSecureStorage,
   createExpoSecureStoreAdapter,
-  requestDeviceAuthenticationPrompt,
+  type SecureStorageAuthSession,
   type SecureStoreAdapter,
 } from '@/app/security/secureStorageContract';
 
 jest.mock('@/app/security/secureStorageContract', () => ({
+  authenticateForSecureStorage: jest.fn(),
   createExpoSecureStoreAdapter: jest.fn(),
-  requestDeviceAuthenticationPrompt: jest.fn(),
+  assertActiveSecureStorageAuthSession: jest.fn(),
+  mapSecureStorageAuthErrorToRetryable: (error: unknown) =>
+    error instanceof Error ? error : new Error(String(error)),
 }));
 
 const mockCreateExpoSecureStoreAdapter = jest.mocked(createExpoSecureStoreAdapter);
-const mockRequestDeviceAuthenticationPrompt = jest.mocked(requestDeviceAuthenticationPrompt);
+const mockAuthenticateForSecureStorage = jest.mocked(authenticateForSecureStorage);
+
+const session: SecureStorageAuthSession = {
+  token: 'session-1',
+  authenticatedAtMs: 1,
+  expiresAtMs: Number.MAX_SAFE_INTEGER,
+};
 
 function createAdapter(overrides: Partial<SecureStoreAdapter> = {}): SecureStoreAdapter {
   return {
@@ -25,10 +35,10 @@ function createAdapter(overrides: Partial<SecureStoreAdapter> = {}): SecureStore
 describe('createSecureStoreReadinessChecker', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({ status: 'success' });
+    mockAuthenticateForSecureStorage.mockResolvedValue({ status: 'success', session });
   });
 
-  it('returns granted when auth prompt and secure-store probe succeed', async () => {
+  it('returns granted when auth session and secure-store probe succeed', async () => {
     let storedValue: string | null = null;
     const adapter = createAdapter({
       setItem: jest.fn(async (_key, value) => {
@@ -43,14 +53,15 @@ describe('createSecureStoreReadinessChecker', () => {
     const result = await checkReadiness();
 
     expect(result).toEqual({ status: 'granted' });
+    expect(mockAuthenticateForSecureStorage).toHaveBeenCalledTimes(1);
     expect(adapter.setItem).toHaveBeenCalledTimes(1);
     expect(adapter.getItem).toHaveBeenCalledTimes(1);
     expect(adapter.deleteItem).toHaveBeenCalledTimes(1);
   });
 
-  it('returns denied when user cancels the device authentication prompt', async () => {
+  it('returns denied when user cancels device authentication', async () => {
     mockCreateExpoSecureStoreAdapter.mockReturnValue(createAdapter());
-    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({
+    mockAuthenticateForSecureStorage.mockResolvedValue({
       status: 'canceled',
       message: 'User canceled prompt',
     });
@@ -65,7 +76,7 @@ describe('createSecureStoreReadinessChecker', () => {
 
   it('returns blocked when device authentication prerequisites are unavailable', async () => {
     mockCreateExpoSecureStoreAdapter.mockReturnValue(createAdapter());
-    mockRequestDeviceAuthenticationPrompt.mockResolvedValue({
+    mockAuthenticateForSecureStorage.mockResolvedValue({
       status: 'failed',
       message: 'Device authentication unavailable',
     });
