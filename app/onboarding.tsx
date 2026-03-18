@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { Button, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { markOnboardingCompleted } from '@/app/onboarding/onboardingState';
 import { type OnboardingPermissionStepKey, useOnboardingPermissions } from '@/app/onboarding/useOnboardingPermissions';
@@ -102,6 +102,8 @@ export default function OnboardingScreen() {
   const initializationStep = steps.initializing_keys;
   const secureStoreStep = steps.secureStore;
 
+  const isAndroid = Platform.OS === 'android';
+
   const secureStorageGuidance =
     secureStoreStep.status === 'granted' && secureStoreStep.errorMessage
       ? secureStoreStep.errorMessage
@@ -110,6 +112,11 @@ export default function OnboardingScreen() {
         : secureStoreStep.status === 'denied'
           ? 'Device authentication was declined. Retry after enabling screen lock / biometrics in system settings.'
           : undefined;
+
+  const iosSecureStorageGuidance =
+    !isAndroid && secureStorageGuidance
+      ? 'On iOS, enable a passcode and Face ID or Touch ID in Settings to improve secure-storage protection.'
+      : undefined;
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
@@ -121,7 +128,7 @@ export default function OnboardingScreen() {
       <Text style={[styles.progress, { color: palette.text }]}>Security status: {terminalState}</Text>
       {!isReady ? <Text style={[styles.errorText, { color: palette.danger }]}>Skip is unavailable because this is a hard security requirement.</Text> : null}
 
-      {secureStorageGuidance ? (
+      {isAndroid && secureStorageGuidance ? (
         <View style={[styles.checklistRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Text style={[styles.stepTitle, { color: palette.text }]}>Android secure storage readiness</Text>
           <Text style={[styles.body, { color: palette.textMuted }]}>{secureStorageGuidance}</Text>
@@ -142,6 +149,9 @@ export default function OnboardingScreen() {
           <View key={step.key} style={[styles.checklistRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text style={[styles.stepTitle, { color: palette.text }]}>{step.label}: {STATUS_LABELS[step.status]}</Text>
             {step.errorMessage ? <Text style={[styles.errorText, { color: palette.danger }]}>{step.errorMessage}</Text> : null}
+            {step.key === 'secureStore' && iosSecureStorageGuidance ? (
+              <Text style={[styles.errorText, { color: palette.danger }]}>{iosSecureStorageGuidance}</Text>
+            ) : null}
             {(step.status === 'denied' || step.status === 'blocked') && step.key !== 'initializing_keys' ? (
               <Button title={`Retry ${step.label}`} onPress={() => void retryStep(step.key)} />
             ) : null}

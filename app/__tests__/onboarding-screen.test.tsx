@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 import OnboardingScreen from '@/app/onboarding';
 
@@ -21,9 +22,17 @@ jest.mock('@/app/onboarding/useOnboardingPermissions', () => ({
 }));
 
 describe('OnboardingScreen', () => {
+  const setPlatformOS = (os: 'android' | 'ios') => {
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: os,
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
 
   it('renders checklist progress, timeline, and retry action for failed initialization', () => {
     const retryStep = jest.fn(async () => undefined);
@@ -165,7 +174,50 @@ describe('OnboardingScreen', () => {
     });
   });
 
+
+  it('suppresses the Android secure-storage card on iOS and shows iOS guidance in the secure-store row', () => {
+    setPlatformOS('ios');
+
+    mockUseOnboardingPermissions.mockReturnValue({
+      grantedCount: 4,
+      totalCount: 4,
+      isReady: true,
+      terminalState: 'ready_to_continue',
+      orderedSteps: [
+        { key: 'camera', label: 'Camera', status: 'granted', errorMessage: undefined },
+        { key: 'bluetooth', label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        {
+          key: 'secureStore',
+          label: 'Secure key storage',
+          status: 'granted',
+          errorMessage:
+            'Secure lock screen / biometrics are not configured. Continuing with secure storage without OS authentication prompts.',
+        },
+        { key: 'initializing_keys', label: 'Initializing keys', status: 'granted', errorMessage: undefined },
+      ],
+      retryStep: jest.fn(async () => undefined),
+      steps: {
+        camera: { label: 'Camera', status: 'granted', errorMessage: undefined },
+        bluetooth: { label: 'Bluetooth', status: 'granted', errorMessage: undefined },
+        secureStore: {
+          label: 'Secure key storage',
+          status: 'granted',
+          errorMessage:
+            'Secure lock screen / biometrics are not configured. Continuing with secure storage without OS authentication prompts.',
+        },
+        initializing_keys: { label: 'Initializing keys', status: 'granted', errorMessage: undefined },
+      },
+    });
+
+    const { getByText, queryByText } = render(<OnboardingScreen />);
+
+    expect(queryByText('Android secure storage readiness')).toBeNull();
+    expect(getByText('Secure key storage: Granted')).toBeTruthy();
+    expect(getByText('On iOS, enable a passcode and Face ID or Touch ID in Settings to improve secure-storage protection.')).toBeTruthy();
+  });
+
   it('shows Android secure-storage fallback guidance when authenticated mode is unavailable', () => {
+    setPlatformOS('android');
     mockUseOnboardingPermissions.mockReturnValue({
       grantedCount: 4,
       totalCount: 4,
