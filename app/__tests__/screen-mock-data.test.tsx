@@ -8,7 +8,8 @@ describe('Screen-level mock data views', () => {
     const { getByText } = render(<HandshakeScreen />);
 
     expect(getByText('Handshake')).toBeTruthy();
-    expect(getByText('Start Handshake')).toBeTruthy();
+    expect(getByText('Offer Hand')).toBeTruthy();
+    expect(getByText('Accept Handshake')).toBeTruthy();
     expect(getByText('Open Connections')).toBeTruthy();
   });
 

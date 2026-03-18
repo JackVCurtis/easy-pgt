@@ -1,43 +1,17 @@
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { render } from "@testing-library/react-native";
 
 import HandshakeScreen from "@/app/(tabs)/handshake";
 
 describe("Handshake flow", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
+  it("shows only the two pre-init handshake actions", () => {
+    const { getByText, queryByText } = render(<HandshakeScreen />);
 
-  afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
-  });
+    expect(getByText("Offer Hand")).toBeTruthy();
+    expect(getByText("Accept Handshake")).toBeTruthy();
 
-  it("guides the user through sharing details and confirms a generated counterparty name", () => {
-    const { getByText, getByPlaceholderText } = render(<HandshakeScreen />);
-
-    fireEvent.press(getByText("Start Handshake"));
-
-    expect(getByText("Share details for this handshake")).toBeTruthy();
-
-    fireEvent.changeText(
-      getByPlaceholderText("Enter the name you want to share"),
-      "Taylor Morgan",
-    );
-    fireEvent.press(getByText("Continue to QR exchange"));
-
-    expect(getByText("Hold phones next to each other")).toBeTruthy();
-
-    for (let i = 0; i < 5; i += 1) {
-      act(() => {
-        jest.advanceTimersByTime(800);
-      });
-    }
-
-    expect(getByText("Handshake complete")).toBeTruthy();
-    expect(getByText("Connected with Avery Shaw.")).toBeTruthy();
-    expect(getByText("Name you shared: Taylor Morgan")).toBeTruthy();
-    expect(getByText("Mutual connections (1 step)")).toBeTruthy();
-    expect(getByText("You → Jordan Miles → Avery Shaw")).toBeTruthy();
+    expect(queryByText("Start Handshake")).toBeNull();
+    expect(queryByText("Continue to QR exchange")).toBeNull();
+    expect(queryByText("Start Another Handshake")).toBeNull();
   });
 
   it("uses a scrollable column layout to avoid overlapping handshake content", () => {
