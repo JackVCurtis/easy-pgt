@@ -1,4 +1,5 @@
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { getCachedAppDataEncryptionKey } from '@/app/security/sessionEncryptionKey';
 import { requestDeviceAuthenticationPrompt } from '@/app/security/secureStorageContract';
 import { unloadSensitiveAppState } from '@/app/state/appState';
 import { hydrateSecureAppState } from '@/app/state/secureStatePersistence';
@@ -26,6 +27,11 @@ function isCanceledAuthenticationError(error: unknown): boolean {
 
 export async function performDeviceAuthentication(): Promise<DeviceAuthenticationResult> {
   try {
+    const cachedEncryptionKey = getCachedAppDataEncryptionKey();
+    if (cachedEncryptionKey) {
+      return { status: 'success', encryptionKey: cachedEncryptionKey };
+    }
+
     const promptResult = await requestDeviceAuthenticationPrompt();
     if (promptResult.status === 'canceled') {
       return { status: 'canceled' };

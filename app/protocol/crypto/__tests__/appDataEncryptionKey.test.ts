@@ -1,6 +1,7 @@
 import SettingsStorage from 'expo-settings-storage';
 
 import { APP_DATA_ENCRYPTION_KEY_STORAGE_KEY, getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { generateSecureSessionKey } from '@/app/crypto';
 import { clearCachedAppDataEncryptionKey } from '@/app/security/sessionEncryptionKey';
 
 jest.mock('expo-settings-storage', () => ({
@@ -8,10 +9,17 @@ jest.mock('expo-settings-storage', () => ({
   getItem: jest.fn(),
 }));
 
+jest.mock('@/app/crypto', () => ({
+  generateSecureSessionKey: jest.fn(),
+}));
+
+const mockGenerateSecureSessionKey = jest.mocked(generateSecureSessionKey);
+
 describe('getOrCreateAppDataEncryptionKey', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearCachedAppDataEncryptionKey();
+    mockGenerateSecureSessionKey.mockReturnValue('generated-session-key');
   });
 
   it('returns the existing stored encryption key when present', async () => {
@@ -29,8 +37,8 @@ describe('getOrCreateAppDataEncryptionKey', () => {
 
     const key = await getOrCreateAppDataEncryptionKey();
 
-    expect(typeof key).toBe('string');
-    expect(key.length).toBeGreaterThan(10);
+    expect(key).toBe('generated-session-key');
+    expect(mockGenerateSecureSessionKey).toHaveBeenCalledTimes(1);
     expect(SettingsStorage.setItem).toHaveBeenCalledWith(APP_DATA_ENCRYPTION_KEY_STORAGE_KEY, key);
   });
 

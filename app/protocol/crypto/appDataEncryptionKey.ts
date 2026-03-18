@@ -1,4 +1,4 @@
-import { generateEphemeralKeypair } from '@/app/protocol/crypto/crypto';
+import { generateSecureSessionKey } from '@/app/crypto';
 import {
   createExpoSecureStoreAdapter,
   readSecureStoreItemOrClearOnInvalidation,
@@ -22,7 +22,7 @@ export async function getOrCreateAppDataEncryptionKey(options: { adapter?: Secur
     return existing;
   }
 
-  const generated = generateEphemeralKeypair().secretKey;
+  const generated = generateSecureSessionKey();
   await adapter.setItem(APP_DATA_ENCRYPTION_KEY_STORAGE_KEY, generated);
   cacheAppDataEncryptionKey(generated);
 
