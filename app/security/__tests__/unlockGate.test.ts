@@ -111,4 +111,24 @@ describe('unlockGate', () => {
     expect(mockAuthenticateForSecureStorage).not.toHaveBeenCalled();
     expect(mockGetOrCreateAppDataEncryptionKey).not.toHaveBeenCalled();
   });
+
+  it('de-duplicates concurrent unlock calls and clears the in-flight state after completion', async () => {
+    const authenticate = jest.fn().mockResolvedValue({ status: 'success' as const, authSession });
+    const hydrateState = jest.fn().mockResolvedValue(undefined);
+
+    const firstUnlock = unlockGate({ authenticate, hydrateState });
+    const secondUnlock = unlockGate({ authenticate, hydrateState });
+
+    expect(authenticate).toHaveBeenCalledTimes(1);
+
+    await expect(firstUnlock).resolves.toEqual({ status: 'unlocked' });
+    await expect(secondUnlock).resolves.toEqual({ status: 'unlocked' });
+
+    await expect(unlockGate({ authenticate, hydrateState: jest.fn().mockResolvedValue(undefined) })).resolves.toEqual({
+      status: 'unlocked',
+    });
+
+    expect(authenticate).toHaveBeenCalledTimes(2);
+    expect(hydrateState).toHaveBeenCalledTimes(1);
+  });
 });

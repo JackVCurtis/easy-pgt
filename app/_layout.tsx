@@ -1,11 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 
-import { unlockGate } from '@/app/security/unlockGate';
+import { isUnlockInProgress, unlockGate } from '@/app/security/unlockGate';
 import { persistSecureAppState } from '@/app/state/secureStatePersistence';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -20,6 +20,7 @@ function isPersistenceTriggerState(nextAppState: AppStateStatus): boolean {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const pathname = usePathname();
   const shouldCheckGateOnResumeRef = useRef(false);
 
   useEffect(() => {
@@ -30,6 +31,10 @@ export default function RootLayout() {
     };
 
     const verifyGateOnResume = () => {
+      if (isUnlockInProgress() || pathname === '/lock') {
+        return;
+      }
+
       void unlockGate().then((result) => {
         if (result.status === 'locked') {
           router.replace('/lock');
@@ -58,7 +63,7 @@ export default function RootLayout() {
       appStateSubscription.remove();
       blurSubscription.remove();
     };
-  }, []);
+  }, [pathname, router]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

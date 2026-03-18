@@ -25,6 +25,8 @@ export type UnlockGateOptions = {
   unloadState?: () => void;
 };
 
+let inFlightUnlock: Promise<UnlockGateResult> | null = null;
+
 function isCanceledAuthenticationError(error: unknown): boolean {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
   return message.includes('cancel') || message.includes('declined') || message.includes('dismissed');
@@ -60,6 +62,10 @@ export async function performDeviceAuthentication(): Promise<DeviceAuthenticatio
 }
 
 export async function unlockGate(options: UnlockGateOptions = {}): Promise<UnlockGateResult> {
+  if (inFlightUnlock) {
+    return inFlightUnlock;
+  }
+
   const authenticate = options.authenticate ?? performDeviceAuthentication;
   const hydrateState =
     options.hydrateState ??
@@ -67,27 +73,39 @@ export async function unlockGate(options: UnlockGateOptions = {}): Promise<Unloc
       hydrateSecureAppState({ encryptionKey, authSession }));
   const unloadState = options.unloadState ?? unloadSensitiveAppState;
 
-  const authenticationResult = await authenticate();
+  inFlightUnlock = (async () => {
+    const authenticationResult = await authenticate();
 
-  if (authenticationResult.status === 'canceled') {
-    unloadState();
-    return { status: 'locked', reason: 'auth_canceled' };
-  }
+    if (authenticationResult.status === 'canceled') {
+      unloadState();
+      return { status: 'locked', reason: 'auth_canceled' };
+    }
 
-  if (authenticationResult.status === 'failed') {
-    unloadState();
-    return { status: 'locked', reason: 'auth_failed' };
-  }
+    if (authenticationResult.status === 'failed') {
+      unloadState();
+      return { status: 'locked', reason: 'auth_failed' };
+    }
+
+    try {
+      await hydrateState({
+        encryptionKey: authenticationResult.encryptionKey,
+        authSession: authenticationResult.authSession,
+      });
+      return { status: 'unlocked' };
+    } catch (error) {
+      console.warn('Secure state hydration failed during unlock gate', error);
+      unloadState();
+      return { status: 'locked', reason: 'hydrate_failed' };
+    }
+  })();
 
   try {
-    await hydrateState({
-      encryptionKey: authenticationResult.encryptionKey,
-      authSession: authenticationResult.authSession,
-    });
-    return { status: 'unlocked' };
-  } catch (error) {
-    console.warn('Secure state hydration failed during unlock gate', error);
-    unloadState();
-    return { status: 'locked', reason: 'hydrate_failed' };
+    return await inFlightUnlock;
+  } finally {
+    inFlightUnlock = null;
   }
+}
+
+export function isUnlockInProgress(): boolean {
+  return inFlightUnlock !== null;
 }

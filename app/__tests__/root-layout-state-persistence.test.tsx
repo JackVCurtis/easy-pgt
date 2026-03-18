@@ -3,7 +3,9 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 const mockPersistSecureAppState = jest.fn<Promise<void>, []>();
 const mockUnlockGate = jest.fn<Promise<{ status: 'unlocked' | 'locked' }>, []>();
+const mockIsUnlockInProgress = jest.fn<boolean, []>();
 const mockReplace = jest.fn();
+const mockUsePathname = jest.fn<string, []>();
 
 let changeHandler: ((nextState: string) => void) | undefined;
 let blurHandler: (() => void) | undefined;
@@ -31,6 +33,7 @@ jest.mock('@/app/state/secureStatePersistence', () => ({
 
 jest.mock('@/app/security/unlockGate', () => ({
   unlockGate: () => mockUnlockGate(),
+  isUnlockInProgress: () => mockIsUnlockInProgress(),
 }));
 
 jest.mock('@react-navigation/native', () => ({
@@ -48,6 +51,7 @@ jest.mock('expo-router', () => {
     useRouter: () => ({
       replace: mockReplace,
     }),
+    usePathname: () => mockUsePathname(),
   };
 });
 
@@ -70,6 +74,8 @@ describe('root layout secure state persistence lifecycle', () => {
 
     mockPersistSecureAppState.mockResolvedValue();
     mockUnlockGate.mockResolvedValue({ status: 'unlocked' });
+    mockIsUnlockInProgress.mockReturnValue(false);
+    mockUsePathname.mockReturnValue('/');
 
     RootLayout = require('@/app/_layout').default as () => React.ReactElement;
   });
@@ -112,5 +118,37 @@ describe('root layout secure state persistence lifecycle', () => {
 
     expect(mockUnlockGate).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith('/lock');
+  });
+
+  it('skips resume unlock checks while an unlock is already in progress', async () => {
+    mockIsUnlockInProgress.mockReturnValue(true);
+
+    await act(async () => {
+      create(<RootLayout />);
+    });
+
+    await act(async () => {
+      changeHandler?.('background');
+      changeHandler?.('active');
+    });
+
+    expect(mockUnlockGate).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('does not rerun resume unlock checks while lock route is active', async () => {
+    mockUsePathname.mockReturnValue('/lock');
+
+    await act(async () => {
+      create(<RootLayout />);
+    });
+
+    await act(async () => {
+      changeHandler?.('background');
+      changeHandler?.('active');
+    });
+
+    expect(mockUnlockGate).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });
