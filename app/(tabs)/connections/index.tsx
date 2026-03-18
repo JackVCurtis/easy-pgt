@@ -2,7 +2,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { getDirectCounterparties, type Counterparty } from '@/app/handshake/connection-store';
+import { getDirectConnections, toCounterpartyView, type CounterpartyView } from '@/app/state/appState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -11,11 +11,13 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 
 export default function ConnectionsScreen() {
-  const [counterparties, setCounterparties] = useState<Counterparty[]>(getDirectCounterparties());
+  const [counterparties, setCounterparties] = useState<CounterpartyView[]>(
+    getDirectConnections().map(toCounterpartyView)
+  );
 
   useFocusEffect(
     useCallback(() => {
-      setCounterparties(getDirectCounterparties());
+      setCounterparties(getDirectConnections().map(toCounterpartyView));
     }, [])
   );
 
