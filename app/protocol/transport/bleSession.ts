@@ -1,5 +1,4 @@
-import nacl from 'tweetnacl';
-
+import { hashBytes, scalarMultSharedSecret } from '../crypto/crypto';
 import type { NfcBootstrapV1 } from './nfcBootstrap.types';
 import type { QrBootstrapV1 } from './qrBootstrap.types';
 import { decodeBase64, encodeBase64 } from './encoding';
@@ -66,10 +65,8 @@ export function deriveSessionContext(
     return { valid: false, reason: 'invalid_peer_key', field: 'peer_ephemeral_public_key' };
   }
 
-  const sharedSecret = nacl.scalarMult(localEphemeralSecretKey, peerPublicKey);
-  const sessionKey = nacl
-    .hash(concat([encoder.encode('pgt_session_v1'), sharedSecret, encoder.encode(pendingSession.sessionUuid)]))
-    .slice(0, 32);
+  const sharedSecret = scalarMultSharedSecret(localEphemeralSecretKey, peerPublicKey);
+  const sessionKey = hashBytes(concat([encoder.encode('pgt_session_v1'), sharedSecret, encoder.encode(pendingSession.sessionUuid)])).slice(0, 32);
 
   return {
     valid: true,
@@ -79,9 +76,7 @@ export function deriveSessionContext(
 }
 
 export function deriveSessionConfirmation(sessionKey: Uint8Array, sessionUuid: string, role: 'initiator' | 'responder'): string {
-  const mac = nacl
-    .hash(concat([encoder.encode('pgt_confirm_v1'), sessionKey, encoder.encode(sessionUuid), encoder.encode(role)]))
-    .slice(0, 32);
+  const mac = hashBytes(concat([encoder.encode('pgt_confirm_v1'), sessionKey, encoder.encode(sessionUuid), encoder.encode(role)])).slice(0, 32);
   return encodeBase64(mac);
 }
 

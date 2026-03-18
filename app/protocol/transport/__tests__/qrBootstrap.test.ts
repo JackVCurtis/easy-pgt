@@ -1,5 +1,7 @@
-import nacl from 'tweetnacl';
-
+import {
+  generateBoxKeypair,
+  generateSigningKeypair,
+} from '@/app/protocol/crypto/crypto';
 import { VALIDATION_LIMITS } from '@/app/protocol/validation/validationLimits';
 
 import {
@@ -26,7 +28,7 @@ function validSignable(): SignableQrBootstrapV1 {
     version: 1,
     session_uuid: '680a3e96-1f84-4c8b-8b39-b664b1744d43',
     identity_binding_hash: 'a'.repeat(64),
-    ephemeral_public_key: toBase64(nacl.box.keyPair().publicKey),
+    ephemeral_public_key: toBase64(generateBoxKeypair().publicKey),
     bluetooth_service_uuid: '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7',
     nonce: '00112233445566778899aabbccddeeff',
   };
@@ -34,7 +36,7 @@ function validSignable(): SignableQrBootstrapV1 {
 
 describe('qr bootstrap transport', () => {
   it('creates a valid signed QR bootstrap and validates signature', () => {
-    const signer = nacl.sign.keyPair();
+    const signer = generateSigningKeypair();
     const payload = signQrBootstrap(validSignable(), signer.secretKey);
 
     expect(validateQrBootstrap(payload, toBase64(signer.publicKey))).toEqual({ valid: true });
@@ -67,7 +69,7 @@ describe('qr bootstrap transport', () => {
   });
 
   it('encodes QR display payload as compact JSON and supports round-trip decode', () => {
-    const signer = nacl.sign.keyPair();
+    const signer = generateSigningKeypair();
     const payload = signQrBootstrap(validSignable(), signer.secretKey);
 
     const display = encodeQrBootstrapForDisplay(payload);
@@ -112,9 +114,9 @@ describe('qr bootstrap transport', () => {
   });
 
   it('rejects invalid signature and decode failures', () => {
-    const signer = nacl.sign.keyPair();
+    const signer = generateSigningKeypair();
     const payload = signQrBootstrap(validSignable(), signer.secretKey);
-    const wrongSigner = nacl.sign.keyPair();
+    const wrongSigner = generateSigningKeypair();
 
     expect(validateQrBootstrap(payload, toBase64(wrongSigner.publicKey))).toEqual({
       valid: false,

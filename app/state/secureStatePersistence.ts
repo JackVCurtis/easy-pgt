@@ -1,6 +1,5 @@
-import nacl from 'tweetnacl';
-
 import { getOrCreateAppDataEncryptionKey } from '@/app/protocol/crypto/appDataEncryptionKey';
+import { generateRandomBytes, openSecretbox, sealSecretbox } from '@/app/protocol/crypto/crypto';
 import {
   createExpoSecureStoreAdapter,
   readSecureStoreItemOrClearOnInvalidation,
@@ -58,7 +57,7 @@ function buildPersistedPayload(params: {
   now: () => number;
 }): PersistedSecureAppStatePayload {
   const nonce = params.randomBytes(SECRETBOX_NONCE_LENGTH);
-  const ciphertext = nacl.secretbox(params.serializedStateBytes, nonce, params.keyBytes);
+  const ciphertext = sealSecretbox(params.serializedStateBytes, nonce, params.keyBytes);
 
   return {
     payloadVersion: APP_STATE_PERSISTENCE_PAYLOAD_VERSION,
@@ -74,7 +73,7 @@ export async function persistSecureAppState(options: PersistSecureAppStateOption
   const adapter = options.adapter ?? createExpoSecureStoreAdapter();
   const readAppState = options.readAppState ?? readAppStateSnapshot;
   const getEncryptionKey = options.getEncryptionKey ?? getOrCreateAppDataEncryptionKey;
-  const randomBytes = options.randomBytes ?? nacl.randomBytes;
+  const randomBytes = options.randomBytes ?? generateRandomBytes;
   const now = options.now ?? Date.now;
 
   const state = readAppState();
@@ -114,7 +113,7 @@ export async function hydrateSecureAppState(options: HydrateSecureAppStateOption
     throw new Error('APP_STATE_DECRYPT_FAILED: persisted payload nonce/ciphertext is invalid.');
   }
 
-  const plaintext = nacl.secretbox.open(ciphertextBytes, nonceBytes, keyBytes);
+  const plaintext = openSecretbox(ciphertextBytes, nonceBytes, keyBytes);
 
   if (!plaintext) {
     throw new Error('APP_STATE_DECRYPT_FAILED: unable to decrypt persisted app state payload.');

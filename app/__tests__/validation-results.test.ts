@@ -1,5 +1,8 @@
-import nacl from 'tweetnacl';
-
+import {
+  generateRandomBytes,
+  generateSigningKeypair,
+  signDetached,
+} from '@/app/protocol/crypto/crypto';
 import { validateRecord } from '@/app/protocol/validation/validateRecord';
 import { deriveSigningPayloadBytes } from '@/app/protocol/validation/crypto/signingPayload';
 import { encodeBase64 } from '@/app/utils/bytes';
@@ -10,7 +13,7 @@ function toBase64(bytes: Uint8Array): string {
 
 describe('auditable validation results', () => {
   it('returns accepted for a valid signed record', () => {
-    const keyPair = nacl.sign.keyPair();
+    const keyPair = generateSigningKeypair();
     const record = {
       record_type: 'identity_binding' as const,
       record_version: 1,
@@ -21,7 +24,7 @@ describe('auditable validation results', () => {
       self_signature: '',
     };
 
-    record.self_signature = toBase64(nacl.sign.detached(deriveSigningPayloadBytes(record), keyPair.secretKey));
+    record.self_signature = toBase64(signDetached(deriveSigningPayloadBytes(record), keyPair.secretKey));
 
     expect(validateRecord(record)).toEqual({
       status: 'accepted',
@@ -53,7 +56,7 @@ describe('auditable validation results', () => {
   });
 
   it('returns conflicted for semantically conflicting records', () => {
-    const keyPair = nacl.sign.keyPair();
+    const keyPair = generateSigningKeypair();
     const record = {
       record_type: 'identity_binding' as const,
       record_version: 1,
@@ -64,7 +67,7 @@ describe('auditable validation results', () => {
       self_signature: '',
     };
 
-    record.self_signature = toBase64(nacl.sign.detached(deriveSigningPayloadBytes(record), keyPair.secretKey));
+    record.self_signature = toBase64(signDetached(deriveSigningPayloadBytes(record), keyPair.secretKey));
 
     expect(
       validateRecord(record, {
@@ -96,12 +99,12 @@ describe('auditable validation results', () => {
       participant_a_merkle_root: 'hash_a123',
       participant_b_merkle_root: 'hash_b123',
       ephemeral_keys: {
-        participant_a: toBase64(nacl.sign.keyPair().publicKey),
-        participant_b: toBase64(nacl.sign.keyPair().publicKey),
+        participant_a: toBase64(generateSigningKeypair().publicKey),
+        participant_b: toBase64(generateSigningKeypair().publicKey),
       },
       signatures: {
-        participant_a: toBase64(nacl.randomBytes(64)),
-        participant_b: toBase64(nacl.randomBytes(64)),
+        participant_a: toBase64(generateRandomBytes(64)),
+        participant_b: toBase64(generateRandomBytes(64)),
       },
     };
 

@@ -1,5 +1,4 @@
-import nacl from 'tweetnacl';
-
+import { signDetached, verifyDetached } from '../crypto/crypto';
 import { VALIDATION_LIMITS } from '../validation/validationLimits';
 import { decodePublicKey, decodeSignature } from '../validation/crypto/signatureDecoding';
 import { canonicalSerialize } from '../validation/crypto/signingPayload';
@@ -129,7 +128,7 @@ export function verifyNfcBootstrapSignature(
     return invalid('public_key_decode_failed', 'signer_public_key');
   }
 
-  return nacl.sign.detached.verify(canonicalSerializeNfcBootstrap(signablePayload(payload)), signature, publicKey)
+  return verifyDetached(canonicalSerializeNfcBootstrap(signablePayload(payload)), signature, publicKey)
     ? { valid: true }
     : invalid('invalid_signature', 'signature');
 }
@@ -147,7 +146,7 @@ export function validateNfcBootstrap(
 }
 
 export function signNfcBootstrap(signable: SignableNfcBootstrapV1, signerSecretKey: Uint8Array): NfcBootstrapV1 {
-  const signature = nacl.sign.detached(canonicalSerializeNfcBootstrap(signable), signerSecretKey);
+  const signature = signDetached(canonicalSerializeNfcBootstrap(signable), signerSecretKey);
   return {
     ...signable,
     signature: encodeBase64(signature),

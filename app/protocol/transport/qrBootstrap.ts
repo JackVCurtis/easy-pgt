@@ -1,5 +1,4 @@
-import nacl from 'tweetnacl';
-
+import { signDetached, verifyDetached } from '../crypto/crypto';
 import { VALIDATION_LIMITS } from '../validation/validationLimits';
 import { decodePublicKey, decodeSignature } from '../validation/crypto/signatureDecoding';
 import { canonicalSerialize } from '../validation/crypto/signingPayload';
@@ -129,7 +128,7 @@ export function verifyQrBootstrapSignature(
     return invalid('public_key_decode_failed', 'signer_public_key');
   }
 
-  return nacl.sign.detached.verify(canonicalSerializeQrBootstrap(signablePayload(payload)), signature, publicKey)
+  return verifyDetached(canonicalSerializeQrBootstrap(signablePayload(payload)), signature, publicKey)
     ? { valid: true }
     : invalid('invalid_signature', 'signature');
 }
@@ -147,7 +146,7 @@ export function validateQrBootstrap(
 }
 
 export function signQrBootstrap(signable: SignableQrBootstrapV1, signerSecretKey: Uint8Array): QrBootstrapV1 {
-  const signature = nacl.sign.detached(canonicalSerializeQrBootstrap(signable), signerSecretKey);
+  const signature = signDetached(canonicalSerializeQrBootstrap(signable), signerSecretKey);
   return {
     ...signable,
     signature: encodeBase64(signature),

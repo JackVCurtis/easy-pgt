@@ -1,4 +1,4 @@
-import nacl from 'tweetnacl';
+import { generateBoxKeypair, generateSigningKeypair } from '@/app/protocol/crypto/crypto';
 
 import {
   canonicalSerializeNfcBootstrap,
@@ -21,7 +21,7 @@ function validSignable(): SignableNfcBootstrapV1 {
     version: 1,
     session_uuid: '680a3e96-1f84-4c8b-8b39-b664b1744d43',
     identity_binding_hash: 'a'.repeat(64),
-    ephemeral_public_key: toBase64(nacl.box.keyPair().publicKey),
+    ephemeral_public_key: toBase64(generateBoxKeypair().publicKey),
     bluetooth_service_uuid: '6f1a6eaf-f6d6-4d8c-a5e0-3ddf2b4531a7',
     nonce: '00112233445566778899aabbccddeeff',
   };
@@ -29,7 +29,7 @@ function validSignable(): SignableNfcBootstrapV1 {
 
 describe('nfc bootstrap validation', () => {
   it('accepts a valid v1 payload', () => {
-    const signer = nacl.sign.keyPair();
+    const signer = generateSigningKeypair();
     const payload = signNfcBootstrap(validSignable(), signer.secretKey);
 
     expect(validateNfcBootstrapStructure(payload)).toEqual({ valid: true });
@@ -131,7 +131,7 @@ describe('nfc bootstrap validation', () => {
   });
 
   it('verifies valid signatures and rejects tampering', () => {
-    const signer = nacl.sign.keyPair();
+    const signer = generateSigningKeypair();
     const payload = signNfcBootstrap(validSignable(), signer.secretKey);
 
     expect(verifyNfcBootstrapSignature(payload, toBase64(signer.publicKey))).toEqual({ valid: true });

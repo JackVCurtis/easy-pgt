@@ -1,4 +1,4 @@
-import nacl from 'tweetnacl';
+import { generateBoxKeypair, hashBytes } from '@/app/protocol/crypto/crypto';
 
 import {
   createPendingBootstrapSession,
@@ -16,7 +16,7 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 function payload(): NfcBootstrapV1 {
-  const kp = nacl.box.keyPair();
+  const kp = generateBoxKeypair();
   return {
     version: 1,
     session_uuid: '680a3e96-1f84-4c8b-8b39-b664b1744d43',
@@ -41,8 +41,8 @@ describe('BLE bootstrap session binding', () => {
   });
 
   it('rejects session uuid mismatch', () => {
-    const local = nacl.box.keyPair();
-    const peer = nacl.box.keyPair();
+    const local = generateBoxKeypair();
+    const peer = generateBoxKeypair();
     const pending = createPendingBootstrapSession({ ...payload(), ephemeral_public_key: toBase64(peer.publicKey) });
 
     const context = deriveSessionContext(local.secretKey, pending);
@@ -65,8 +65,8 @@ describe('BLE bootstrap session binding', () => {
   });
 
   it('fails confirmation when secrets do not match', () => {
-    const local = nacl.box.keyPair();
-    const peer = nacl.box.keyPair();
+    const local = generateBoxKeypair();
+    const peer = generateBoxKeypair();
     const pending: PendingBootstrapSession = createPendingBootstrapSession({
       ...payload(),
       ephemeral_public_key: toBase64(peer.publicKey),
@@ -78,7 +78,7 @@ describe('BLE bootstrap session binding', () => {
       return;
     }
 
-    const wrongKey = nacl.hash(new Uint8Array([1, 2, 3])).slice(0, 32);
+    const wrongKey = hashBytes(new Uint8Array([1, 2, 3])).slice(0, 32);
     const wrongProof = deriveSessionConfirmation(wrongKey, pending.sessionUuid, 'responder');
 
     expect(
@@ -94,8 +94,8 @@ describe('BLE bootstrap session binding', () => {
   });
 
   it('accepts success path', () => {
-    const local = nacl.box.keyPair();
-    const peer = nacl.box.keyPair();
+    const local = generateBoxKeypair();
+    const peer = generateBoxKeypair();
     const pending = createPendingBootstrapSession({ ...payload(), ephemeral_public_key: toBase64(peer.publicKey) });
 
     const context = deriveSessionContext(local.secretKey, pending);

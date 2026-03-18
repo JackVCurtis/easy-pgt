@@ -1,5 +1,4 @@
-import nacl from 'tweetnacl';
-
+import { generateRandomBytes, openSecretbox } from '@/app/protocol/crypto/crypto';
 import { createInMemorySecureStoreAdapter } from '@/app/security/secureStorage';
 import { decodeBase64, encodeBase64, utf8Decode } from '@/app/utils/bytes';
 
@@ -42,7 +41,7 @@ describe('secureStatePersistence', () => {
     expect(parsed.ciphertext).not.toContain('onboardingComplete');
 
     const ciphertextBytes = decodeBase64(parsed.ciphertext);
-    const decryptedBytes = nacl.secretbox.open(ciphertextBytes!, decodeBase64(parsed.nonce)!, keyBytes);
+    const decryptedBytes = openSecretbox(ciphertextBytes!, decodeBase64(parsed.nonce)!, keyBytes);
 
     expect(decryptedBytes).toBeTruthy();
     expect(JSON.parse(utf8Decode(decryptedBytes!))).toEqual({
@@ -88,7 +87,7 @@ describe('secureStatePersistence', () => {
         },
       }),
       getEncryptionKey: async () => encodeBase64(keyBytes),
-      randomBytes: (length) => nacl.randomBytes(length),
+      randomBytes: (length) => generateRandomBytes(length),
     });
 
     await hydrateSecureAppState({
@@ -144,7 +143,7 @@ describe('secureStatePersistence', () => {
         },
       }),
       getEncryptionKey: async () => encodeBase64(keyBytes),
-      randomBytes: (length) => nacl.randomBytes(length),
+      randomBytes: (length) => generateRandomBytes(length),
     });
 
     await hydrateSecureAppState({

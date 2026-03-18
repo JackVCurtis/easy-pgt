@@ -1,13 +1,17 @@
 import * as Crypto from 'expo-crypto';
-import nacl from 'tweetnacl';
-
+import {
+  generateBoxKeypairFromSecretKey,
+  generateSigningKeypairFromSeed,
+  type BoxKeypair,
+  type SigningKeypair,
+} from '@/app/protocol/crypto/crypto';
 import { encodeHex } from '@/app/protocol/transport';
 
 export type RandomBytes = (length: number) => Uint8Array;
 
 export type ProximityLocalKeys = {
-  signer: nacl.SignKeyPair;
-  ephemeral: nacl.BoxKeyPair;
+  signer: SigningKeypair;
+  ephemeral: BoxKeypair;
 };
 
 function getRandomBytes(length: number): Uint8Array {
@@ -19,8 +23,8 @@ export function createProximityLocalKeys(randomBytes: RandomBytes = getRandomByt
   const ephemeralSecretKey = randomBytes(32);
 
   return {
-    signer: nacl.sign.keyPair.fromSeed(signerSeed),
-    ephemeral: nacl.box.keyPair.fromSecretKey(ephemeralSecretKey),
+    signer: generateSigningKeypairFromSeed(signerSeed),
+    ephemeral: generateBoxKeypairFromSecretKey(ephemeralSecretKey),
   };
 }
 
