@@ -128,7 +128,15 @@ export function readAppStateSnapshot(): AppStateDto {
   return readState();
 }
 
+export function replaceAppStateSnapshot(nextState: AppStateDto): AppStateDto {
+  return writeState(nextState);
+}
+
 export function resetAppStateRepository(): AppStateDto {
+  return writeState(INITIAL_APP_STATE);
+}
+
+export function unloadSensitiveAppState(): AppStateDto {
   return writeState(INITIAL_APP_STATE);
 }
 

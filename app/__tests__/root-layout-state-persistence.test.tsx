@@ -2,6 +2,8 @@ import type React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 const mockPersistSecureAppState = jest.fn<Promise<void>, []>();
+const mockUnlockGate = jest.fn<Promise<{ status: 'unlocked' | 'locked' }>, []>();
+const mockReplace = jest.fn();
 
 let changeHandler: ((nextState: string) => void) | undefined;
 let blurHandler: (() => void) | undefined;
@@ -27,6 +29,10 @@ jest.mock('@/app/state/secureStatePersistence', () => ({
   persistSecureAppState: () => mockPersistSecureAppState(),
 }));
 
+jest.mock('@/app/security/unlockGate', () => ({
+  unlockGate: () => mockUnlockGate(),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   DarkTheme: {},
   DefaultTheme: {},
@@ -39,9 +45,11 @@ jest.mock('expo-router', () => {
 
   return {
     Stack: StackComponent,
+    useRouter: () => ({
+      replace: mockReplace,
+    }),
   };
 });
-
 
 jest.mock('react-native-reanimated', () => ({}));
 jest.mock('expo-status-bar', () => ({
@@ -61,6 +69,7 @@ describe('root layout secure state persistence lifecycle', () => {
     blurHandler = undefined;
 
     mockPersistSecureAppState.mockResolvedValue();
+    mockUnlockGate.mockResolvedValue({ status: 'unlocked' });
 
     RootLayout = require('@/app/_layout').default as () => React.ReactElement;
   });
@@ -87,5 +96,21 @@ describe('root layout secure state persistence lifecycle', () => {
 
     expect(mockRemoveChangeListener).toHaveBeenCalledTimes(1);
     expect(mockRemoveBlurListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs unlock gate on app resume and routes to lock screen when unlock fails', async () => {
+    mockUnlockGate.mockResolvedValueOnce({ status: 'locked' });
+
+    await act(async () => {
+      create(<RootLayout />);
+    });
+
+    await act(async () => {
+      changeHandler?.('background');
+      changeHandler?.('active');
+    });
+
+    expect(mockUnlockGate).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith('/lock');
   });
 });

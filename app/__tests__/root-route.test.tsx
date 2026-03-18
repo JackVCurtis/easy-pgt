@@ -2,6 +2,7 @@ import type React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 const mockHasCompletedOnboarding = jest.fn<Promise<boolean>, []>();
+const mockUnlockGate = jest.fn<Promise<{ status: 'unlocked' | 'locked' }>, []>();
 
 jest.mock('expo-router', () => ({
   Redirect: 'Redirect',
@@ -9,6 +10,10 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/app/onboarding/onboardingState', () => ({
   hasCompletedOnboarding: () => mockHasCompletedOnboarding(),
+}));
+
+jest.mock('@/app/security/unlockGate', () => ({
+  unlockGate: () => mockUnlockGate(),
 }));
 
 type Deferred<T> = {
@@ -58,10 +63,12 @@ describe('root route', () => {
     const redirect = renderer.root.findByType('Redirect');
 
     expect(redirect.props).toMatchObject({ href: '/onboarding' });
+    expect(mockUnlockGate).not.toHaveBeenCalled();
   });
 
-  it('redirects completed onboarding users to handshake', async () => {
+  it('redirects completed onboarding users to lock screen when gate unlock fails', async () => {
     mockHasCompletedOnboarding.mockResolvedValueOnce(true);
+    mockUnlockGate.mockResolvedValueOnce({ status: 'locked' });
 
     let renderer!: ReactTestRenderer;
 
@@ -71,6 +78,23 @@ describe('root route', () => {
 
     const redirect = renderer.root.findByType('Redirect');
 
+    expect(mockUnlockGate).toHaveBeenCalledTimes(1);
+    expect(redirect.props).toMatchObject({ href: '/lock' });
+  });
+
+  it('redirects completed onboarding users to handshake when gate unlock succeeds', async () => {
+    mockHasCompletedOnboarding.mockResolvedValueOnce(true);
+    mockUnlockGate.mockResolvedValueOnce({ status: 'unlocked' });
+
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(<RootIndex />);
+    });
+
+    const redirect = renderer.root.findByType('Redirect');
+
+    expect(mockUnlockGate).toHaveBeenCalledTimes(1);
     expect(redirect.props).toMatchObject({ href: '/handshake' });
   });
 });

@@ -5,6 +5,7 @@ import { decodeBase64, encodeBase64, utf8Decode } from '@/app/utils/bytes';
 
 import {
   APP_STATE_SECURE_PAYLOAD_STORAGE_KEY,
+  hydrateSecureAppState,
   persistSecureAppState,
   type PersistedSecureAppStatePayload,
 } from '../secureStatePersistence';
@@ -60,5 +61,58 @@ describe('secureStatePersistence', () => {
         getEncryptionKey: async () => 'not-valid-base64',
       })
     ).rejects.toThrow('APP_STATE_ENCRYPTION_KEY_INVALID');
+  });
+
+  it('decrypts persisted payload and hydrates state into memory', async () => {
+    const adapter = createInMemorySecureStoreAdapter();
+    const keyBytes = new Uint8Array(Array.from({ length: 32 }, (_unused, index) => index + 11));
+    const hydrateState = jest.fn();
+
+    await persistSecureAppState({
+      adapter,
+      readAppState: () => ({
+        connections: [{ id: 'tr-hydrate', trustDepth: 2 }],
+        messageComposer: {
+          draftMessage: '',
+          verificationContext: {
+            status: null,
+            senderDistances: [],
+          },
+        },
+        runtimeGatekeeping: {
+          hasCompletedOnboarding: true,
+          hasGeneratedIdentity: true,
+          hasGrantedBluetoothPermission: true,
+          hasGrantedCameraPermission: true,
+          isDeviceSecurityConfigured: true,
+        },
+      }),
+      getEncryptionKey: async () => encodeBase64(keyBytes),
+      randomBytes: (length) => nacl.randomBytes(length),
+    });
+
+    await hydrateSecureAppState({
+      adapter,
+      getEncryptionKey: async () => encodeBase64(keyBytes),
+      hydrateState,
+    });
+
+    expect(hydrateState).toHaveBeenCalledWith({
+      connections: [{ id: 'tr-hydrate', trustDepth: 2 }],
+      messageComposer: {
+        draftMessage: '',
+        verificationContext: {
+          status: null,
+          senderDistances: [],
+        },
+      },
+      runtimeGatekeeping: {
+        hasCompletedOnboarding: true,
+        hasGeneratedIdentity: true,
+        hasGrantedBluetoothPermission: true,
+        hasGrantedCameraPermission: true,
+        isDeviceSecurityConfigured: true,
+      },
+    });
   });
 });

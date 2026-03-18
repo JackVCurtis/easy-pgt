@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { hasCompletedOnboarding } from '@/app/onboarding/onboardingState';
+import { unlockGate } from '@/app/security/unlockGate';
 
-type OnboardingStatus = 'loading' | 'complete' | 'incomplete';
+type RouteStatus = 'loading' | 'onboarding' | 'locked' | 'unlocked';
 
 export default function Index() {
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('loading');
+  const [routeStatus, setRouteStatus] = useState<RouteStatus>('loading');
 
   useEffect(() => {
     let isMounted = true;
@@ -19,7 +20,18 @@ export default function Index() {
         return;
       }
 
-      setOnboardingStatus(hasCompleted ? 'complete' : 'incomplete');
+      if (!hasCompleted) {
+        setRouteStatus('onboarding');
+        return;
+      }
+
+      const gateResult = await unlockGate();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setRouteStatus(gateResult.status === 'unlocked' ? 'unlocked' : 'locked');
     };
 
     void loadOnboardingStatus();
@@ -29,12 +41,16 @@ export default function Index() {
     };
   }, []);
 
-  if (onboardingStatus === 'loading') {
+  if (routeStatus === 'loading') {
     return <View testID="root-route-loading" />;
   }
 
-  if (onboardingStatus === 'incomplete') {
+  if (routeStatus === 'onboarding') {
     return <Redirect href="/onboarding" />;
+  }
+
+  if (routeStatus === 'locked') {
+    return <Redirect href="/lock" />;
   }
 
   return <Redirect href="/handshake" />;

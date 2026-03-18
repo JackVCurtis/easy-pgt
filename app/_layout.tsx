@@ -1,10 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import 'react-native-reanimated';
 
+import { unlockGate } from '@/app/security/unlockGate';
 import { persistSecureAppState } from '@/app/state/secureStatePersistence';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -18,6 +19,8 @@ function isPersistenceTriggerState(nextAppState: AppStateStatus): boolean {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const shouldCheckGateOnResumeRef = useRef(false);
 
   useEffect(() => {
     const persistSecureState = () => {
@@ -26,9 +29,24 @@ export default function RootLayout() {
       });
     };
 
+    const verifyGateOnResume = () => {
+      void unlockGate().then((result) => {
+        if (result.status === 'locked') {
+          router.replace('/lock');
+        }
+      });
+    };
+
     const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
       if (isPersistenceTriggerState(nextAppState)) {
+        shouldCheckGateOnResumeRef.current = true;
         persistSecureState();
+        return;
+      }
+
+      if (nextAppState === 'active' && shouldCheckGateOnResumeRef.current) {
+        shouldCheckGateOnResumeRef.current = false;
+        verifyGateOnResume();
       }
     });
 
@@ -46,6 +64,7 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="lock" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

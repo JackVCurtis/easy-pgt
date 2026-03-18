@@ -5,9 +5,9 @@ import {
   createExpoSecureStoreAdapter,
   type SecureStoreAdapter,
 } from '@/app/security/secureStorage';
-import { decodeBase64, encodeBase64, utf8Encode } from '@/app/utils/bytes';
+import { decodeBase64, encodeBase64, utf8Decode, utf8Encode } from '@/app/utils/bytes';
 
-import { readAppStateSnapshot, type AppStateDto } from './appState';
+import { readAppStateSnapshot, replaceAppStateSnapshot, type AppStateDto } from './appState';
 
 const APP_STATE_PERSISTENCE_PAYLOAD_VERSION = 1;
 const APP_STATE_SCHEMA_VERSION = 1;
@@ -31,6 +31,12 @@ export type PersistSecureAppStateOptions = {
   getEncryptionKey?: () => Promise<string>;
   randomBytes?: (length: number) => Uint8Array;
   now?: () => number;
+};
+
+export type HydrateSecureAppStateOptions = {
+  adapter?: SecureStoreAdapter;
+  getEncryptionKey?: () => Promise<string>;
+  hydrateState?: (state: AppStateDto) => void;
 };
 
 function assertSecretboxKeyBytes(encodedKey: string): Uint8Array {
@@ -80,4 +86,37 @@ export async function persistSecureAppState(options: PersistSecureAppStateOption
   });
 
   await adapter.setItem(APP_STATE_SECURE_PAYLOAD_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function parsePersistedPayload(payload: string): PersistedSecureAppStatePayload {
+  return JSON.parse(payload) as PersistedSecureAppStatePayload;
+}
+
+export async function hydrateSecureAppState(options: HydrateSecureAppStateOptions = {}): Promise<void> {
+  const adapter = options.adapter ?? createExpoSecureStoreAdapter();
+  const getEncryptionKey = options.getEncryptionKey ?? getOrCreateAppDataEncryptionKey;
+  const hydrateState = options.hydrateState ?? replaceAppStateSnapshot;
+
+  const storedPayload = await adapter.getItem(APP_STATE_SECURE_PAYLOAD_STORAGE_KEY);
+
+  if (!storedPayload) {
+    return;
+  }
+
+  const payload = parsePersistedPayload(storedPayload);
+  const keyBytes = assertSecretboxKeyBytes(await getEncryptionKey());
+  const nonceBytes = decodeBase64(payload.nonce);
+  const ciphertextBytes = decodeBase64(payload.ciphertext);
+
+  if (!nonceBytes || !ciphertextBytes || nonceBytes.length !== SECRETBOX_NONCE_LENGTH) {
+    throw new Error('APP_STATE_DECRYPT_FAILED: persisted payload nonce/ciphertext is invalid.');
+  }
+
+  const plaintext = nacl.secretbox.open(ciphertextBytes, nonceBytes, keyBytes);
+
+  if (!plaintext) {
+    throw new Error('APP_STATE_DECRYPT_FAILED: unable to decrypt persisted app state payload.');
+  }
+
+  hydrateState(JSON.parse(utf8Decode(plaintext)) as AppStateDto);
 }
