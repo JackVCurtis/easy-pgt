@@ -61,7 +61,7 @@ describe('Messages screen actions', () => {
       );
     });
 
-    expect(getByText('Message signed and copied to clipboard (mock).')).toBeTruthy();
+    expect(getByText('Message signed and copied to clipboard.')).toBeTruthy();
   });
 
   it('reports missing signature when verifying unsigned content', () => {
