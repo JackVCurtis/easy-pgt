@@ -1,11 +1,11 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { AppButton } from "@/components/ui/app-button";
 import { AppCard } from "@/components/ui/app-card";
 import { SectionHeader } from "@/components/ui/section-header";
+import { HandshakeContainer } from "@/app/features/handshake/HandshakeContainer";
 
 export default function HandshakeScreen() {
   return (
@@ -21,20 +21,7 @@ export default function HandshakeScreen() {
             subtitle="Offer or accept a handshake to begin nearby trust exchange."
           />
 
-          <View style={styles.flowContent}>
-            <View style={styles.flowSection}>
-              <AppButton label="Offer Hand" onPress={() => {}} />
-              <AppButton label="Accept Handshake" onPress={() => {}} />
-            </View>
-          </View>
-
-          <View style={styles.previewSection}>
-            <ThemedText type="defaultSemiBold">Diagnostics</ThemedText>
-            <ThemedText>
-              Handshake diagnostics will appear here once a handshake is
-              initiated.
-            </ThemedText>
-          </View>
+          <HandshakeContainer />
 
           <View style={styles.navigationSection}>
             <AppButton
@@ -60,17 +47,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "space-between",
     alignItems: "stretch",
-  },
-  flowContent: {
-    gap: 16,
-    paddingTop: 8,
-  },
-  flowSection: {
-    gap: 12,
-  },
-  previewSection: {
-    gap: 8,
-    paddingTop: 16,
   },
   navigationSection: {
     paddingTop: 16,
