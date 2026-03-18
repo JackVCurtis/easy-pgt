@@ -32,6 +32,30 @@ export type AppStateDto = {
   runtimeGatekeeping: RuntimeGatekeepingFlagsDto;
 };
 
+export const DEFAULT_CONNECTIONS: CounterpartyConnectionDto[] = [
+  {
+    id: 'tr-001',
+    localAlias: 'Ari Kim',
+    counterpartAlias: 'Northside Organizer',
+    trustDepth: 1,
+    handshakeStatus: 'verified',
+  },
+  {
+    id: 'tr-002',
+    localAlias: 'Mei Patel',
+    counterpartAlias: 'Library Contact',
+    trustDepth: 2,
+    handshakeStatus: 'verified',
+  },
+  {
+    id: 'tr-003',
+    localAlias: 'Jordan Lee',
+    counterpartAlias: 'Mutual Friend',
+    trustDepth: 3,
+    handshakeStatus: 'pending',
+  },
+];
+
 export const INITIAL_APP_STATE: AppStateDto = {
   connections: [],
   messageComposer: {
@@ -49,3 +73,7 @@ export const INITIAL_APP_STATE: AppStateDto = {
     isDeviceSecurityConfigured: false,
   },
 };
+
+export function getRuntimeConnections(state: AppStateDto): CounterpartyConnectionDto[] {
+  return state.connections.length > 0 ? state.connections : DEFAULT_CONNECTIONS;
+}

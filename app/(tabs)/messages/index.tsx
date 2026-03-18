@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { INITIAL_APP_STATE } from '@/app/state/appState';
+import { getRuntimeConnections, INITIAL_APP_STATE } from '@/app/state/appState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppButton } from '@/components/ui/app-button';
@@ -50,7 +50,7 @@ export default function MessagesScreen() {
 
     setStatus(isSigned ? 'Signature detected and verified.' : 'No signature found.');
     setSenderDistances(
-      INITIAL_APP_STATE.connections.map(
+      getRuntimeConnections(INITIAL_APP_STATE).map(
         (connection) => `${connection.counterpartAlias}: ${connection.trustDepth} hop(s)`
       )
     );

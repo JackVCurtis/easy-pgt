@@ -1,4 +1,4 @@
-import { INITIAL_APP_STATE } from '@/app/state/appState';
+import { getRuntimeConnections, INITIAL_APP_STATE } from '@/app/state/appState';
 
 export type Counterparty = {
   id: string;
@@ -13,7 +13,7 @@ export type Counterparty = {
 
 const GENERATED_COUNTERPARTY_NAME = 'Avery Shaw';
 
-const INITIAL_COUNTERPARTIES: Counterparty[] = INITIAL_APP_STATE.connections.map((connection) => ({
+const INITIAL_COUNTERPARTIES: Counterparty[] = getRuntimeConnections(INITIAL_APP_STATE).map((connection) => ({
   id: connection.id,
   providedName: connection.counterpartAlias,
   localSharedName: connection.localAlias,
