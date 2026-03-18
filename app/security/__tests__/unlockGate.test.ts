@@ -21,7 +21,10 @@ describe('unlockGate', () => {
   });
 
   it('authenticates then hydrates state into memory when auth succeeds', async () => {
-    const authenticate = jest.fn().mockResolvedValue({ status: 'success' as const });
+    const authenticate = jest.fn().mockResolvedValue({
+      status: 'success' as const,
+      encryptionKey: 'session-encryption-key',
+    });
     const hydrateState = jest.fn().mockResolvedValue();
     const unloadState = jest.fn();
 
@@ -31,6 +34,7 @@ describe('unlockGate', () => {
 
     expect(authenticate).toHaveBeenCalledTimes(1);
     expect(hydrateState).toHaveBeenCalledTimes(1);
+    expect(hydrateState).toHaveBeenCalledWith('session-encryption-key');
     expect(unloadState).not.toHaveBeenCalled();
   });
 
@@ -62,7 +66,10 @@ describe('unlockGate', () => {
   });
 
   it('triggers native authentication prompt before loading app data encryption key', async () => {
-    await expect(performDeviceAuthentication()).resolves.toEqual({ status: 'success' });
+    await expect(performDeviceAuthentication()).resolves.toEqual({
+      status: 'success',
+      encryptionKey: 'mock-app-data-key',
+    });
 
     expect(mockRequestDeviceAuthenticationPrompt).toHaveBeenCalledTimes(1);
     expect(mockGetOrCreateAppDataEncryptionKey).toHaveBeenCalledTimes(1);

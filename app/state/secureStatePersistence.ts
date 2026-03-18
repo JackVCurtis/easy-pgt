@@ -36,6 +36,7 @@ export type PersistSecureAppStateOptions = {
 
 export type HydrateSecureAppStateOptions = {
   adapter?: SecureStoreAdapter;
+  encryptionKey?: string;
   getEncryptionKey?: () => Promise<string>;
   hydrateState?: (state: AppStateDto) => void;
 };
@@ -105,7 +106,7 @@ export async function hydrateSecureAppState(options: HydrateSecureAppStateOption
   }
 
   const payload = parsePersistedPayload(storedPayload);
-  const keyBytes = assertSecretboxKeyBytes(await getEncryptionKey());
+  const keyBytes = assertSecretboxKeyBytes(options.encryptionKey ?? (await getEncryptionKey()));
   const nonceBytes = decodeBase64(payload.nonce);
   const ciphertextBytes = decodeBase64(payload.ciphertext);
 

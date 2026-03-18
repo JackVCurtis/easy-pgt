@@ -115,4 +115,46 @@ describe('secureStatePersistence', () => {
       },
     });
   });
+
+  it('hydrates with caller-provided encryption key without re-reading secure storage key material', async () => {
+    const adapter = createInMemorySecureStoreAdapter();
+    const keyBytes = new Uint8Array(Array.from({ length: 32 }, (_unused, index) => index + 31));
+    const hydrateState = jest.fn();
+    const getEncryptionKey = jest.fn(async () => {
+      throw new Error('should not be called');
+    });
+
+    await persistSecureAppState({
+      adapter,
+      readAppState: () => ({
+        connections: [],
+        messageComposer: {
+          draftMessage: 'cached-key-test',
+          verificationContext: {
+            status: null,
+            senderDistances: [],
+          },
+        },
+        runtimeGatekeeping: {
+          hasCompletedOnboarding: true,
+          hasGeneratedIdentity: true,
+          hasGrantedBluetoothPermission: true,
+          hasGrantedCameraPermission: true,
+          isDeviceSecurityConfigured: true,
+        },
+      }),
+      getEncryptionKey: async () => encodeBase64(keyBytes),
+      randomBytes: (length) => nacl.randomBytes(length),
+    });
+
+    await hydrateSecureAppState({
+      adapter,
+      encryptionKey: encodeBase64(keyBytes),
+      getEncryptionKey,
+      hydrateState,
+    });
+
+    expect(getEncryptionKey).not.toHaveBeenCalled();
+    expect(hydrateState).toHaveBeenCalled();
+  });
 });

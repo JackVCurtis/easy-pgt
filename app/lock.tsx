@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { unlockGate } from '@/app/security/unlockGate';
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +11,15 @@ export default function LockScreen() {
   const router = useRouter();
   const [isRetrying, setIsRetrying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => {
+        subscription.remove();
+      };
+    }, [])
+  );
 
   const onRetry = async () => {
     setIsRetrying(true);

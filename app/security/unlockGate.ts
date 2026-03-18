@@ -5,6 +5,7 @@ import { hydrateSecureAppState } from '@/app/state/secureStatePersistence';
 
 export type DeviceAuthenticationResult = {
   status: 'success' | 'failed' | 'canceled';
+  encryptionKey?: string;
 };
 
 export type UnlockGateResult = {
@@ -14,7 +15,7 @@ export type UnlockGateResult = {
 
 export type UnlockGateOptions = {
   authenticate?: () => Promise<DeviceAuthenticationResult>;
-  hydrateState?: () => Promise<void>;
+  hydrateState?: (encryptionKey?: string) => Promise<void>;
   unloadState?: () => void;
 };
 
@@ -34,8 +35,8 @@ export async function performDeviceAuthentication(): Promise<DeviceAuthenticatio
       return { status: 'failed' };
     }
 
-    await getOrCreateAppDataEncryptionKey();
-    return { status: 'success' };
+    const encryptionKey = await getOrCreateAppDataEncryptionKey();
+    return { status: 'success', encryptionKey };
   } catch (error) {
     if (isCanceledAuthenticationError(error)) {
       return { status: 'canceled' };
@@ -47,7 +48,9 @@ export async function performDeviceAuthentication(): Promise<DeviceAuthenticatio
 
 export async function unlockGate(options: UnlockGateOptions = {}): Promise<UnlockGateResult> {
   const authenticate = options.authenticate ?? performDeviceAuthentication;
-  const hydrateState = options.hydrateState ?? hydrateSecureAppState;
+  const hydrateState =
+    options.hydrateState ??
+    (async (encryptionKey?: string) => hydrateSecureAppState({ encryptionKey }));
   const unloadState = options.unloadState ?? unloadSensitiveAppState;
 
   const authenticationResult = await authenticate();
@@ -63,7 +66,7 @@ export async function unlockGate(options: UnlockGateOptions = {}): Promise<Unloc
   }
 
   try {
-    await hydrateState();
+    await hydrateState(authenticationResult.encryptionKey);
     return { status: 'unlocked' };
   } catch (error) {
     console.warn('Secure state hydration failed during unlock gate', error);
