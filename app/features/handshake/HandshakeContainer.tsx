@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
@@ -7,6 +7,9 @@ import type { ProximitySessionState } from '@/app/features/proximity/proximitySt
 import { ProximityQrDisplay } from '@/app/features/proximity/components/ProximityQrDisplay';
 import { ProximityQrScanner } from '@/app/features/proximity/components/ProximityQrScanner';
 import { useProximityBootstrap } from '@/app/features/proximity/useProximityBootstrap';
+import { addHandshakeCounterparty } from '@/app/handshake/connection-store';
+import { HandshakeSuccessModal } from '@/app/features/handshake/components/HandshakeSuccessModal';
+import { buildExchangedPayloadForRole, type ExchangedPayloadResult } from '@/app/features/handshake/handshakePayloads';
 
 const IDENTITY_BINDING_HASH = '7f4f2f2a6a63c8bd4f07bd55f0a4a8a3e274eb45857ec5b5ef5ec66c700cf6ad';
 
@@ -49,6 +52,7 @@ function getFailureMessage(state: ProximitySessionState): string | null {
 
 export function HandshakeContainer() {
   const [mode, setMode] = useState<HandshakeEntryMode>('idle');
+  const [exchangedPayloadResult, setExchangedPayloadResult] = useState<ExchangedPayloadResult | null>(null);
   const {
     state,
     bootstrapDisplayString,
@@ -70,6 +74,22 @@ export function HandshakeContainer() {
 
   const failureMessage = getFailureMessage(state);
 
+  useEffect(() => {
+    if (state.status !== 'session_authenticated' || mode === 'idle' || exchangedPayloadResult) {
+      return;
+    }
+
+    const localRole = mode === 'offer' ? 'offerer' : 'accepter';
+    const exchangedPayload = buildExchangedPayloadForRole(localRole);
+
+    addHandshakeCounterparty({
+      localSharedName: exchangedPayload.localSharedPayload.displayName,
+      providedName: exchangedPayload.remoteReceivedPayload.displayName,
+      contactInfo: exchangedPayload.remoteReceivedPayload.email,
+    });
+    setExchangedPayloadResult(exchangedPayload);
+  }, [state.status, mode, exchangedPayloadResult]);
+
   const beginOffer = async () => {
     setMode('offer');
     await prepareWriterPayload(IDENTITY_BINDING_HASH);
@@ -82,6 +102,7 @@ export function HandshakeContainer() {
 
   const restart = async () => {
     await reset();
+    setExchangedPayloadResult(null);
     setMode('idle');
   };
 
@@ -141,6 +162,12 @@ export function HandshakeContainer() {
           </ThemedText>
         ))}
       </View>
+
+      <HandshakeSuccessModal
+        visible={Boolean(exchangedPayloadResult)}
+        exchangedPayload={exchangedPayloadResult}
+        onClose={() => setExchangedPayloadResult(null)}
+      />
     </View>
   );
 }

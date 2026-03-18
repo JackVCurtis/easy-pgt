@@ -21,14 +21,17 @@ export function getCounterpartyById(id: string): Counterparty | undefined {
 
 export function addHandshakeCounterparty({
   localSharedName,
+  providedName,
   contactInfo,
 }: {
   localSharedName: string;
+  providedName?: string;
   contactInfo?: string;
 }): Counterparty {
   return toCounterpartyView(
     addHandshakeConnection({
       localSharedName,
+      providedName,
       contactInfo,
     })
   );

@@ -31,6 +31,17 @@ describe('app state repository connection workflows', () => {
     expect(typeof created.createdAtMs).toBe('number');
   });
 
+  it('uses provided counterpart name when handshake summary includes it', () => {
+    const created = addHandshakeConnection({
+      localSharedName: 'Taylor Morgan',
+      providedName: 'Blair Accept',
+      contactInfo: 'blair.accept@example.com',
+    });
+
+    expect(created.counterpartAlias).toBe('Blair Accept');
+    expect(created.contactInfo).toBe('blair.accept@example.com');
+  });
+
   it('allows editing the saved name and optional contact info', () => {
     const created = addHandshakeConnection({
       localSharedName: 'Taylor Morgan',
