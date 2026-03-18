@@ -171,15 +171,17 @@ export function toCounterpartyView(connection: CounterpartyConnectionDto): Count
 
 export function addHandshakeConnection({
   localSharedName,
+  providedName,
   contactInfo,
 }: {
   localSharedName: string;
+  providedName?: string;
   contactInfo?: string;
 }): CounterpartyConnectionDto {
   const now = Date.now();
   const created: CounterpartyConnectionDto = {
     id: `tr-${now}`,
-    counterpartAlias: GENERATED_COUNTERPARTY_NAME,
+    counterpartAlias: providedName ?? GENERATED_COUNTERPARTY_NAME,
     localAlias: localSharedName,
     trustDepth: 1,
     handshakeStatus: 'verified',
