@@ -9,6 +9,7 @@ import { ProximityQrScanner } from '@/app/features/proximity/components/Proximit
 import { useProximityBootstrap } from '@/app/features/proximity/useProximityBootstrap';
 import { addHandshakeCounterparty } from '@/app/handshake/connection-store';
 import { HandshakeSuccessModal } from '@/app/features/handshake/components/HandshakeSuccessModal';
+import { HandshakeErrorModal } from '@/app/features/handshake/components/HandshakeErrorModal';
 import { buildExchangedPayloadForRole, type ExchangedPayloadResult } from '@/app/features/handshake/handshakePayloads';
 
 const IDENTITY_BINDING_HASH = '7f4f2f2a6a63c8bd4f07bd55f0a4a8a3e274eb45857ec5b5ef5ec66c700cf6ad';
@@ -106,6 +107,8 @@ export function HandshakeContainer() {
     setMode('idle');
   };
 
+  const isErrorModalVisible = state.status === 'failed';
+
   return (
     <View style={styles.container}>
       {mode === 'idle' ? (
@@ -156,12 +159,19 @@ export function HandshakeContainer() {
         )}
         {isHandshakeComplete ? <ThemedText type="defaultSemiBold">Handshake complete: BLE session authenticated.</ThemedText> : null}
         <ThemedText>Status: {state.status}</ThemedText>
-        {diagnosticEvents.slice(-4).map((event) => (
-          <ThemedText key={`${event.at}-${event.source}-${event.action}`} selectable>
-            {event.at} [{event.source}] {event.action}: {event.detail}
-          </ThemedText>
-        ))}
+        {diagnosticEvents.length > 0 ? (
+          <ThemedText>Recent event: {diagnosticEvents[diagnosticEvents.length - 1]?.action}</ThemedText>
+        ) : null}
       </View>
+
+      <HandshakeErrorModal
+        visible={isErrorModalVisible}
+        failureReason={state.failureReason}
+        mappedMessage={failureMessage}
+        diagnostic={diagnostic}
+        diagnosticEvents={diagnosticEvents}
+        onResetRetry={() => void restart()}
+      />
 
       <HandshakeSuccessModal
         visible={Boolean(exchangedPayloadResult)}

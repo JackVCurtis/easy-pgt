@@ -31,7 +31,7 @@ interface UseProximityBootstrapPorts {
   ble?: ProximityBlePort;
 }
 
-interface ProximityDiagnosticEvent {
+export interface ProximityDiagnosticEvent {
   source: 'qr' | 'ble' | 'session' | 'system';
   action: string;
   detail: string;
