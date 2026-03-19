@@ -1,6 +1,6 @@
 import { decodeBase64, encodeBase64 } from '@/modules/protocol/transport';
 import { Alert } from 'react-native';
-import bleModule from 'react-native-ble-plx';
+import { BleManager } from 'react-native-ble-plx';
 import type { ProximityBleDevice, ProximityBlePort } from './types';
 interface SubscriptionLike {
   remove(): void;
@@ -40,7 +40,7 @@ interface BleManagerLike {
 }
 
 function createBleManager() {
- return new bleModule.BleManager();
+ return new BleManager();
 }
 
 function normalizeUuid(value: string): string {
