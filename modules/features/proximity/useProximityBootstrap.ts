@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
 import {
-    createPendingBootstrapSession,
-    decodeQrBootstrapScan,
-    deriveSessionConfirmation,
-    deriveSessionContext,
-    encodeBase64,
-    encodeQrBootstrapForDisplay,
-    signQrBootstrap,
-    validateBleDiscoveryMatch,
-    validateQrBootstrap,
-    validateSessionConfirmation,
-    type PendingBootstrapSession,
-    type QrBootstrapV1,
-    type SignableQrBootstrapV1,
+  createPendingBootstrapSession,
+  decodeQrBootstrapScan,
+  deriveSessionConfirmation,
+  deriveSessionContext,
+  encodeBase64,
+  encodeQrBootstrapForDisplay,
+  signQrBootstrap,
+  validateBleDiscoveryMatch,
+  validateQrBootstrap,
+  validateSessionConfirmation,
+  type PendingBootstrapSession,
+  type QrBootstrapV1,
+  type SignableQrBootstrapV1,
 } from '@/modules/protocol/transport';
 
 import {
-    createProximityLocalKeysProvider,
-    createProximityNonceHex,
+  createProximityLocalKeysProvider,
+  createProximityNonceHex,
 } from './proximityKeys';
 import { proximitySessionReducer } from './proximityState';
 import { createProximitySessionUuid } from './proximityUuid';
@@ -127,10 +127,10 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
       setDiagnostic('Bootstrap payload generated and ready for QR scan.');
       pushDiagnosticEvent({ source: 'qr', action: 'generate_success', detail: 'Payload encoded for QR display.' });
       dispatch({ type: 'set_status', status: 'bootstrap_ready' });
-    } catch (error) {
+    } catch (error: any) {
       setBootstrapPayload(null);
       setBootstrapDisplayString('');
-      failWithMappedError(error, 'Bootstrap payload generation failed', 'qr');
+      failWithMappedError(error, `Bootstrap payload generation failed: ${error.message}`, 'qr');
     }
   };
 
