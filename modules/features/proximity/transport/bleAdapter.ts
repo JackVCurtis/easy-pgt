@@ -113,6 +113,8 @@ function resolveLocalServiceUuid(): string | null {
       Constants?.platform?.android?.androidId,
     ];
 
+    console.log(candidates)
+
     for (const candidate of candidates) {
       if (typeof candidate !== 'string') {
         continue;
