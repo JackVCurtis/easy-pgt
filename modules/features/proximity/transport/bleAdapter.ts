@@ -1,4 +1,5 @@
 import { decodeBase64, encodeBase64 } from '@/modules/protocol/transport';
+import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import type { ProximityBleDevice, ProximityBlePort } from './types';
@@ -106,14 +107,10 @@ function createUuidFromDeviceIdentifier(rawValue: string): string | null {
 }
 
 function resolveLocalServiceUuid(): string | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const constantsModule = require('expo-constants');
-    const constants = constantsModule.default ?? constantsModule;
 
     const candidates = [
-      constants?.platform?.ios?.identifierForVendor,
-      constants?.platform?.android?.androidId,
+      Constants?.platform?.ios?.identifierForVendor,
+      Constants?.platform?.android?.androidId,
     ];
 
     for (const candidate of candidates) {
@@ -126,11 +123,8 @@ function resolveLocalServiceUuid(): string | null {
         return uuid;
       }
     }
-
+    
     return null;
-  } catch {
-    return null;
-  }
 }
 
 export function createBleAdapter(manager = createBleManager()): ProximityBlePort {
