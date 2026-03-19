@@ -37,15 +37,7 @@ class DeviceAuthHelper(
   }
 
   fun canAuthenticate(): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      biometricManager.canAuthenticate(ALLOWED_AUTHENTICATORS) ==
-        BiometricManager.BIOMETRIC_SUCCESS
-    } else {
-      // On Android 10 and lower, DEVICE_CREDENTIAL combinations are not supported
-      // through setAllowedAuthenticators(); use biometric availability OR secure lock screen.
-      biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS ||
-        isDeviceSecure()
-    }
+    return biometricManager.canAuthenticate(ALLOWED_AUTHENTICATORS)
   }
 
   fun authenticate(force: Boolean = true): Boolean {
