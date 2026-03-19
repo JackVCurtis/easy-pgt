@@ -1,6 +1,6 @@
 import { decodeBase64, encodeBase64 } from '@/modules/protocol/transport';
+import bleModule from 'react-native-ble-plx';
 import type { ProximityBleDevice, ProximityBlePort } from './types';
-
 interface SubscriptionLike {
   remove(): void;
 }
@@ -38,17 +38,8 @@ interface BleManagerLike {
   destroy(): void;
 }
 
-function createBleManager(): BleManagerLike | null {
-  try {
-    // Defer requiring native modules until runtime so Jest environments without
-    // native BLE bindings can still import this file safely.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const bleModule = require('react-native-ble-plx');
-
-    return new bleModule.BleManager() as BleManagerLike;
-  } catch {
-    return null;
-  }
+function createBleManager() {
+ return new bleModule.BleManager();
 }
 
 function normalizeUuid(value: string): string {
@@ -81,7 +72,7 @@ function encodeUtf8Base64(value: string): string {
 }
 
 function decodeUtf8Base64(value: string): string {
-  return new TextDecoder().decode(decodeBase64(value));
+  return new TextDecoder().decode(decodeBase64(value) || new ArrayBuffer());
 }
 
 
@@ -141,35 +132,7 @@ function resolveLocalServiceUuid(): string | null {
   }
 }
 
-export function createBleAdapter(manager: BleManagerLike | null = createBleManager()): ProximityBlePort {
-  if (!manager) {
-    return {
-      async getLocalServiceUuid() {
-        throw new Error('LOCAL_SERVICE_UUID_UNAVAILABLE');
-      },
-      async startAdvertising() {
-        throw new Error('BLE_UNAVAILABLE_OR_DISABLED');
-      },
-      async stopAdvertising() {
-        return;
-      },
-      async scanForService() {
-        throw new Error('BLE_UNAVAILABLE_OR_DISABLED');
-      },
-      async connect() {
-        throw new Error('BLE_UNAVAILABLE_OR_DISABLED');
-      },
-      async exchangeContactInfo() {
-        throw new Error('BLE_UNAVAILABLE_OR_DISABLED');
-      },
-      async disconnect() {
-        return;
-      },
-      async cleanup() {
-        return;
-      },
-    };
-  }
+export function createBleAdapter(manager = createBleManager()): ProximityBlePort {
 
   let connectedDeviceId: string | undefined;
   let connectedDevice: DeviceLike | undefined;
