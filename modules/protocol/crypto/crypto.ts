@@ -1,3 +1,5 @@
+import 'react-native-get-random-values';
+
 import nacl from 'tweetnacl';
 
 import type { DurableRecord } from '@/modules/protocol/records';

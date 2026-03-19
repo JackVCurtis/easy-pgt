@@ -1,5 +1,3 @@
-import 'react-native-get-random-values';
-
 import { generateRandomBytes } from '@/modules/protocol/crypto/crypto';
 import { encodeBase64 } from '@/modules/utils/bytes';
 
