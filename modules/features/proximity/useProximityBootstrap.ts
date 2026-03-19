@@ -72,7 +72,6 @@ export function useProximityBootstrap(ports: UseProximityBootstrapPorts = {}) {
     dispatch({ type: 'set_status', status: 'bootstrap_preparing' });
     pushDiagnosticEvent({ source: 'qr', action: 'generate_start', detail: 'Preparing signed QR bootstrap payload.' });
       const localServiceUuid = await blePort.getLocalServiceUuid();
-
       const signable: SignableQrBootstrapV1 = {
         version: 1,
         session_uuid: createProximitySessionUuid(),

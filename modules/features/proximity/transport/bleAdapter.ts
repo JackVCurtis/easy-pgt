@@ -1,11 +1,13 @@
 import { decodeBase64, encodeBase64 } from '@/modules/protocol/transport';
-import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import type { ProximityBleDevice, ProximityBlePort } from './types';
 interface SubscriptionLike {
   remove(): void;
 }
+
+const SERVICE_UUID = 'd795c8a2-5514-4b52-9f68-1fe80bd9fb52'
+const HANDSHAKE_CHAR_UUID = '03ec7b33-9a44-4b72-ac4c-11f14a74a181';
 
 interface DeviceLike {
   id: string;
@@ -65,7 +67,7 @@ function toProximityBleDevice(device: DeviceLike): ProximityBleDevice {
   };
 }
 
-const CONTACT_INFO_CHARACTERISTIC_UUID = '1f58fbb8-70f0-4df5-9a9e-c6d85ba6f0a3';
+const CONTACT_INFO_CHARACTERISTIC_UUID = '563d77e6-8548-4573-aed3-4e3466b4595a';
 const CONTACT_INFO_READ_TIMEOUT_MS = 10_000;
 const CONTACT_INFO_READ_INTERVAL_MS = 300;
 
@@ -75,58 +77,6 @@ function encodeUtf8Base64(value: string): string {
 
 function decodeUtf8Base64(value: string): string {
   return new TextDecoder().decode(decodeBase64(value) || new ArrayBuffer());
-}
-
-
-function isUuidLike(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function formatHexAsUuid(hex: string): string {
-  const normalized = hex.toLowerCase();
-  return `${normalized.slice(0, 8)}-${normalized.slice(8, 12)}-${normalized.slice(12, 16)}-${normalized.slice(16, 20)}-${normalized.slice(20, 32)}`;
-}
-
-function createUuidFromDeviceIdentifier(rawValue: string): string | null {
-  const trimmed = rawValue.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (isUuidLike(trimmed)) {
-    return trimmed.toLowerCase();
-  }
-
-  const hexOnly = trimmed.toLowerCase().replace(/[^0-9a-f]/g, '');
-  if (hexOnly.length < 16) {
-    return null;
-  }
-
-  const expandedHex = hexOnly.length >= 32 ? hexOnly.slice(0, 32) : (hexOnly + hexOnly).slice(0, 32);
-  return formatHexAsUuid(expandedHex);
-}
-
-function resolveLocalServiceUuid(): string | null {
-
-    const candidates = [
-      Constants?.platform?.ios?.identifierForVendor,
-      Constants?.platform?.android?.androidId,
-    ];
-
-    console.log(candidates)
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== 'string') {
-        continue;
-      }
-
-      const uuid = createUuidFromDeviceIdentifier(candidate);
-      if (uuid) {
-        return uuid;
-      }
-    }
-    
-    return null;
 }
 
 export function createBleAdapter(manager = createBleManager()): ProximityBlePort {
@@ -158,14 +108,14 @@ export function createBleAdapter(manager = createBleManager()): ProximityBlePort
 
   return {
     async getLocalServiceUuid() {
-      const uuid = resolveLocalServiceUuid();
+      const uuid = SERVICE_UUID;
       if (!uuid) {
         throw new Error('LOCAL_SERVICE_UUID_UNAVAILABLE');
       }
 
       return uuid;
     },
-    async startAdvertising(_serviceUuid) {
+    async startAdvertising() {
       throw new Error('BLE_ADVERTISE_NOT_SUPPORTED');
     },
     async stopAdvertising() {
