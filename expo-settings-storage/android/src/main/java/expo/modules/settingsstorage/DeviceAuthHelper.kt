@@ -8,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.biometric.BIOMETRIC_SUCCESS
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
@@ -38,7 +37,7 @@ class DeviceAuthHelper(
   }
 
   fun canAuthenticate(): Boolean {
-    return biometricManager.canAuthenticate(ALLOWED_AUTHENTICATORS) == BIOMETRIC_SUCCESS
+    return biometricManager.canAuthenticate(ALLOWED_AUTHENTICATORS) == 0
   }
 
   fun authenticate(force: Boolean = true): Boolean {
