@@ -31,6 +31,7 @@
     "expo-router": "~6.0.23",
     "expo-secure-store": "~15.0.7",
     "expo-settings-storage": "file:./expo-settings-storage",
+    "expo-ble-peripheral": "file:./expo-ble-peripheral",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
