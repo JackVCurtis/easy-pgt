@@ -1,19 +1,57 @@
-import type { StyleProp, ViewStyle } from 'react-native';
+export type AdvertiseMode = 'balanced' | 'lowLatency' | 'lowPower';
+export type TxPowerLevel = 'high' | 'medium' | 'low' | 'ultraLow';
 
-export type OnLoadEventPayload = {
-  url: string;
+export type StartPeripheralOptions = {
+  serviceUuid: string;
+  inboundCharacteristicUuid: string;
+  outboundCharacteristicUuid: string;
+  deviceName?: string;
+  advertiseMode?: AdvertiseMode;
+  txPowerLevel?: TxPowerLevel;
+  includeDeviceName?: boolean;
+};
+
+export type PeripheralState = {
+  supported: boolean;
+  permissionsGranted: boolean;
+  advertising: boolean;
+  gattServerStarted: boolean;
+  connectedDeviceCount: number;
+  subscribedDeviceCount: number;
+  sessionReady: boolean;
+};
+
+export type SupportState = {
+  bluetooth: boolean;
+  ble: boolean;
+  peripheralMode: boolean;
+  multipleAdvertisement: boolean;
+};
+
+export type PermissionState = {
+  advertise: boolean;
+  connect: boolean;
+};
+
+export type HandshakeMessageEventPayload = {
+  base64Payload: string;
+  version: number;
+  messageType: string;
+  sessionId: string;
 };
 
 export type ExpoBlePeripheralModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
+  onPeripheralStateChanged: (params: PeripheralState) => void;
+  onAdvertisingStateChanged: (params: { advertising: boolean }) => void;
+  onDeviceConnected: (params: { deviceId: string }) => void;
+  onDeviceDisconnected: (params: { deviceId: string }) => void;
+  onHandshakeMessageReceived: (params: HandshakeMessageEventPayload) => void;
+  onError: (params: { code: string; message: string }) => void;
 };
 
-export type ChangeEventPayload = {
-  value: string;
-};
 
 export type ExpoBlePeripheralViewProps = {
   url: string;
-  onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
-  style?: StyleProp<ViewStyle>;
+  onLoad: (event: { nativeEvent: { url: string } }) => void;
+  style?: unknown;
 };
