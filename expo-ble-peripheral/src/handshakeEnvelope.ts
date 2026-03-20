@@ -10,7 +10,7 @@ const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/
 export const MAX_HANDSHAKE_BYTES = 512;
 
 export function parseHandshakeEnvelope(base64Payload: string): HandshakeEnvelope {
-  const bytes = Buffer.from(base64Payload, 'base64');
+  const bytes = Uint8Array.from(atob(base64Payload))
   if (!bytes.length) {
     throw new Error('ERR_MALFORMED_HANDSHAKE: message is empty');
   }
@@ -20,7 +20,7 @@ export function parseHandshakeEnvelope(base64Payload: string): HandshakeEnvelope
 
   let decoded: unknown;
   try {
-    decoded = JSON.parse(bytes.toString('utf8'));
+    decoded = JSON.parse(bytes.toString());
   } catch {
     throw new Error('ERR_MALFORMED_HANDSHAKE: message must be valid JSON');
   }

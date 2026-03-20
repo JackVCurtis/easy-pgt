@@ -2,8 +2,8 @@ import { NativeModule, requireNativeModule } from 'expo';
 
 import type {
   ExpoBlePeripheralModuleEvents,
-  PermissionState,
   PeripheralState,
+  PermissionState,
   StartPeripheralOptions,
   SupportState,
 } from './ExpoBlePeripheral.types';
@@ -34,4 +34,4 @@ export default {
   stopPeripheral: nativeModule.stopPeripheral.bind(nativeModule),
   sendHandshakeMessage: nativeModule.sendHandshakeMessage.bind(nativeModule),
   getState: nativeModule.getState.bind(nativeModule),
-};
+} as ExpoBlePeripheralModule & { startPeripheral: typeof startPeripheral };
