@@ -1,10 +1,11 @@
-import { generateSecureSessionKey } from '@/modules/crypto';
+import { generateRandomBytes } from '@/modules/protocol/crypto/crypto';
 import {
   createExpoSecureStoreAdapter,
   mapSecureStorageAuthErrorToRetryable,
   readSecureStoreItemOrClearOnInvalidation
 } from '@/modules/security/secureStorageContract';
 import { cacheAppDataEncryptionKey, getCachedAppDataEncryptionKey } from '@/modules/security/sessionEncryptionKey';
+import { encodeHex } from './encoding';
 
 export const APP_DATA_ENCRYPTION_KEY_STORAGE_KEY = 'comrades.app-data.encryption-key.v1';
 
@@ -29,7 +30,7 @@ export async function getOrCreateAppDataEncryptionKey(): Promise<string> {
     return existing;
   }
 
-  const generated = generateSecureSessionKey();
+  const generated = encodeHex(generateRandomBytes(32));
 
   try {
     await adapter.setItem(APP_DATA_ENCRYPTION_KEY_STORAGE_KEY, generated);

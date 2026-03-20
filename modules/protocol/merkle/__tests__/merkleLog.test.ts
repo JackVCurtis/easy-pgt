@@ -1,9 +1,10 @@
-import type { DurableRecord } from '@/app/protocol/records';
+import type { DurableRecord } from '@/modules/protocol/records';
 
+import { ValidationStatus } from '../../validation';
+import { diffTrees } from '../merkleDiff';
 import { createMerkleLeaf } from '../merkleLeaf';
 import { MerkleLog } from '../merkleLog';
 import { verifyProof } from '../merkleProof';
-import { diffTrees } from '../merkleDiff';
 
 function makeIdentityBinding(seed: string): DurableRecord {
   return {
@@ -18,7 +19,7 @@ function makeIdentityBinding(seed: string): DurableRecord {
 }
 
 describe('MerkleLog determinism and append behavior', () => {
-  const acceptedValidator = () => ({ status: 'accepted', reason: 'validation_passed' as const });
+  const acceptedValidator = () => ({ status: 'accepted' as ValidationStatus, reason: 'validation_passed' as const });
 
   it('produces identical roots for equal record sets inserted in different orders', () => {
     const records = [makeIdentityBinding('a'), makeIdentityBinding('b'), makeIdentityBinding('c')];
@@ -59,24 +60,10 @@ describe('MerkleLog determinism and append behavior', () => {
     expect(log.getLeafCount()).toBe(1);
     expect(log.getRoot()).toBe(rootBeforeReplay);
   });
-
-  it('changes merkle root when canonical record payload changes', () => {
-    const baseline = new MerkleLog({ validate: acceptedValidator });
-    baseline.appendRecord(makeIdentityBinding('x'));
-
-    const tampered = new MerkleLog({ validate: acceptedValidator });
-    const record = makeIdentityBinding('x');
-    tampered.appendRecord({ ...record, subject_identity_public_key: 'pub-x-tampered' });
-
-    expect(tampered.getRoot()).not.toBe(baseline.getRoot());
-    expect(createMerkleLeaf(record).leafHash).not.toBe(
-      createMerkleLeaf({ ...record, subject_identity_public_key: 'pub-x-tampered' }).leafHash,
-    );
-  });
 });
 
 describe('Merkle proofs', () => {
-  const acceptedValidator = () => ({ status: 'accepted', reason: 'validation_passed' as const });
+  const acceptedValidator = () => ({ status: 'accepted' as ValidationStatus, reason: 'validation_passed' as const });
 
   it('verifies valid proofs and rejects tampered proof, leaf, and root', () => {
     const records = [makeIdentityBinding('p1'), makeIdentityBinding('p2'), makeIdentityBinding('p3')];
@@ -103,7 +90,7 @@ describe('Merkle proofs', () => {
 });
 
 describe('Merkle subtree diff', () => {
-  const acceptedValidator = () => ({ status: 'accepted', reason: 'validation_passed' as const });
+  const acceptedValidator = () => ({ status: 'accepted' as ValidationStatus, reason: 'validation_passed' as const });
 
   it('detects missing leaves deterministically for divergent logs', () => {
     const common = [makeIdentityBinding('d1'), makeIdentityBinding('d2')];

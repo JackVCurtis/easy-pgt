@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { hexToBytes } from '@/app/utils/bytes';
+import { hexToBytes } from '@/modules/utils/bytes';
 
 import type { MerkleLeaf } from '../merkleLeaf';
 import { buildMerkleTree } from '../merkleTree';

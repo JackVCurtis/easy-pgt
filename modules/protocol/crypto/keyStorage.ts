@@ -4,8 +4,8 @@ import {
   readSecureStoreItemOrClearOnInvalidation,
   type SecureStoreAdapter,
 } from '@/modules/security/secureStorageContract';
+import { decodeBase64 } from '@/modules/utils/bytes';
 import { generateIdentityKeypair } from './crypto';
-import { decodeBase64 } from './encoding';
 
 const DEFAULT_IDENTITY_KEYPAIR_STORAGE_KEY = 'pgt.identity.keypair.v1';
 const KEY_STORAGE_CORRUPTED_ERROR_MESSAGE =
@@ -35,8 +35,8 @@ function assertStoredIdentityKeypair(candidate: unknown): asserts candidate is S
     throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }
 
-  const decodedSecretKey = decodeBase64(value.secretKey, 64);
-  const decodedPublicKey = decodeBase64(value.publicKey, 32);
+  const decodedSecretKey = decodeBase64(value.secretKey);
+  const decodedPublicKey = decodeBase64(value.publicKey);
   if (!decodedSecretKey || !decodedPublicKey) {
     throw new Error(KEY_STORAGE_CORRUPTED_ERROR_MESSAGE);
   }

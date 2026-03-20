@@ -1,6 +1,6 @@
-import type { DurableRecord, EndorsementRecord, IdentityBindingRecord, RevocationRecord } from '@/app/protocol/records';
-import { resolveTrustStates } from '@/app/protocol/trust/resolveTrustState';
-import { deriveBindingHash } from '@/app/protocol/trust/trustIndexes';
+import type { DurableRecord, EndorsementRecord, IdentityBindingRecord, RevocationRecord } from '@/modules/protocol/records';
+import { resolveTrustStates } from '@/modules/protocol/trust/resolveTrustState';
+import { deriveBindingHash } from '@/modules/protocol/trust/trustIndexes';
 
 function identityBinding(overrides: Partial<IdentityBindingRecord> = {}): IdentityBindingRecord {
   return {

@@ -1,4 +1,4 @@
-import type { DurableRecord } from '@/app/protocol/records';
+import type { DurableRecord } from '@/modules/protocol/records';
 
 import { createMerkleLeaf, deriveLeafHash, deriveRecordHash, sortMerkleLeaves } from '../merkleLeaf';
 
